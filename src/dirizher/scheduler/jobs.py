@@ -9,6 +9,8 @@ from __future__ import annotations
 from datetime import date, datetime, timedelta, timezone
 from html import escape as _esc
 
+from ..bot import text as tx
+from ..bot.notifications import send_with_fallback
 from ..container import AppContainer
 from ..domain.models import Task
 from ..logging_setup import get_logger
@@ -41,16 +43,21 @@ async def run_reminders(c: AppContainer, *, today: date | None = None) -> int:
         if task.reminded_at and (now - task.reminded_at) < timedelta(hours=20):
             continue
         chat_id = _target_chat(c, task)
-        if not chat_id or c.bot is None:
+        member = c.team.resolve(task.assignee)
+        target_chat = member.dm_chat_id if member and member.dm_chat_id else chat_id
+        if not target_chat or c.bot is None:
             continue
         mention = c.team.mention_for(task.assignee)  # уже HTML-безопасно
         overdue = task.deadline and task.deadline < today
-        head = "⏰ <b>Просрочено!</b>" if overdue else "⏰ <b>Скоро дедлайн</b>"
+        head = "⏰ <b>Просрочено</b>" if overdue else "⏰ <b>Скоро дедлайн</b>"
         dl = task.deadline_display() if task.deadline else "—"
-        await c.bot.send_message(
-            chat_id,
-            f"{head}\n📋 {_esc(task.title)}\n👤 {mention} · 📅 до {_esc(dl)}\n"
-            f"Отметьте статус, когда будет готово.",
+        who = "личное напоминание" if member and member.dm_chat_id else mention
+        await send_with_fallback(
+            c.bot,
+            target_chat,
+            f"{head}\n━━━━━━━━━━━━━━\n📋 <b>{_esc(task.title)}</b>\n"
+            f"👤 {who}\n📅 до {_esc(dl)}\n\nОбновите статус, когда будет готово.",
+            fallback_chat_id=chat_id,
         )
         task.reminded_at = now
         sent += 1
@@ -77,5 +84,13 @@ async def run_evening_reconciliation(c: AppContainer, *, today: date | None = No
     for chat_id in chats:
         digest, _silent = c.reconciliation.evening_digest(chat_id, today=today)
         await c.bot.send_message(chat_id, digest)
+
+    for member in c.team.all():
+        if not member.dm_chat_id:
+            continue
+        name = member.username or member.full_name
+        tasks = c.repo.open_by_assignee(name) if name else []
+        stats = c.cabinet.stats_for(member, today=today)
+        await send_with_fallback(c.bot, member.dm_chat_id, tx.render_personal_digest(member, tasks, stats))
     log.info("Вечерняя сверка разослана в чатов: %d", len(chats))
     return len(chats)

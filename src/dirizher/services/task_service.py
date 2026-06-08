@@ -8,8 +8,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from enum import Enum
+import re as _re
 
 from ..config import Settings
 from ..domain.enums import TaskStatus
@@ -22,8 +23,6 @@ from ..memory.vector_store import TaskMemory
 from ..repository import TaskRepository, TeamRegistry
 
 log = get_logger("dirizher.service")
-
-import re as _re
 
 _ASSIGNEE_SPLIT = _re.compile(r"\s*(?:,|;|/|&|\bи\b|\band\b)\s*", _re.IGNORECASE)
 
@@ -234,7 +233,12 @@ class TaskService:
         task.requirements = f"{task.requirements}; {extra}" if task.requirements else extra
 
     async def set_status(self, task: Task, status: TaskStatus) -> Task:
+        now = datetime.now(timezone.utc)
         task.status = status
+        if status is TaskStatus.in_progress and task.started_at is None:
+            task.started_at = now
+        if status is TaskStatus.done and task.completed_at is None:
+            task.completed_at = now
         task.touch()
         if task.board_card_id:
             if status == TaskStatus.done:

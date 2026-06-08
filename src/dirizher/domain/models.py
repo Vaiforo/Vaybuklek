@@ -59,6 +59,7 @@ class TeamMember(BaseModel):
     email: str | None = None          # email, привязанный к доске YouGile
     yougile_id: str | None = None     # id пользователя на доске YouGile
     voice_registered: bool = False
+    dm_chat_id: int | None = None     # личный чат с ботом для персональных уведомлений
 
     def mention(self) -> str:
         """HTML-упоминание (бот работает в parse_mode=HTML)."""
@@ -100,6 +101,8 @@ class Task(BaseModel):
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
     reminded_at: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
 
     @classmethod
     def from_extracted(cls, ex: ExtractedTask, source: SourceRef) -> "Task":

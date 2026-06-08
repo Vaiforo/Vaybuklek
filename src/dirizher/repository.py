@@ -73,6 +73,7 @@ class TeamRegistry:
                 existing.full_name = member.full_name or existing.full_name
                 existing.email = member.email or existing.email
                 existing.yougile_id = member.yougile_id or existing.yougile_id
+                existing.dm_chat_id = member.dm_chat_id or existing.dm_chat_id
                 for a in member.aliases:
                     if a not in existing.aliases:
                         existing.aliases.append(a)
@@ -84,6 +85,17 @@ class TeamRegistry:
 
     def all(self) -> list[TeamMember]:
         return list(self._by_id.values()) + self._anon
+
+    def get_by_user_id(self, user_id: int | None) -> TeamMember | None:
+        if user_id is None:
+            return None
+        return self._by_id.get(user_id)
+
+    def attach_dm_chat(self, user_id: int, chat_id: int) -> TeamMember | None:
+        member = self._by_id.get(user_id)
+        if member:
+            member.dm_chat_id = chat_id
+        return member
 
     @staticmethod
     def _candidates(m: TeamMember) -> list[str]:

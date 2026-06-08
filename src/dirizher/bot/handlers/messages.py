@@ -16,6 +16,7 @@ from ...domain.models import SourceRef, TeamMember
 from ...llm.prefilter import looks_taskish
 from ...logging_setup import get_logger
 from .. import task_commands
+from .. import text as tx
 from ..flow import present
 
 router = Router(name="messages")
@@ -33,6 +34,60 @@ def _author(user) -> str:
     if user is None:
         return "—"
     return user.full_name or (f"@{user.username}" if user.username else "участник")
+
+
+def _is_private(message: Message) -> bool:
+    return getattr(message.chat, "type", "") == "private"
+
+
+def _register_user(message: Message, c: AppContainer) -> TeamMember | None:
+    user = message.from_user
+    if not user:
+        return None
+    member = c.team.register(
+        TeamMember(
+            user_id=user.id,
+            username=user.username,
+            full_name=user.full_name,
+            dm_chat_id=message.chat.id if _is_private(message) else None,
+        )
+    )
+    if _is_private(message):
+        c.team.attach_dm_chat(user.id, message.chat.id)
+    return member
+
+
+async def _handle_private_companion(message: Message, c: AppContainer, member: TeamMember | None) -> bool:
+    """Неформальное общение в личке: профиль, задачи, заметки, база знаний."""
+    if not _is_private(message) or member is None:
+        return False
+    low = (message.text or "").strip().lower()
+    if low in {"профиль", "кабинет", "мой профиль", "статистика", "метрики"}:
+        await message.answer(c.cabinet.render_profile(member))
+        return True
+    if low in {"задачи", "мои задачи", "что у меня", "план"}:
+        name = member.username or member.full_name
+        await message.answer(tx.render_tasks(c.repo.open_by_assignee(name)))
+        return True
+    if low in {"заметки", "мои заметки"}:
+        await message.answer(c.cabinet.render_notes(member))
+        return True
+    if low.startswith(("заметка ", "запомни ")):
+        raw = (message.text or "").split(" ", 1)[1].strip()
+        if not raw:
+            await message.answer("🗒️ Напишите текст заметки после слова «запомни».")
+            return True
+        note = c.cabinet.add_note(member, raw)
+        await message.answer(f"🗒️ Запомнил в личных заметках: #{note.id}")
+        return True
+    if low in {"база", "база знаний", "знания"}:
+        await message.answer(c.cabinet.render_knowledge(c.cabinet.recent_knowledge()))
+        return True
+    if low.startswith(("найди ", "поиск ", "что знаем про ")):
+        query = (message.text or "").split(" ", 1)[1].strip()
+        await message.answer(c.cabinet.render_knowledge(c.cabinet.search_knowledge(query)))
+        return True
+    return False
 
 
 def _team_names(c: AppContainer) -> tuple[str, ...]:
@@ -53,16 +108,15 @@ async def on_text(message: Message, c: AppContainer, state: FSMContext) -> None:
     if await state.get_state() is not None:
         return
 
-    user = message.from_user
-    if user:
-        c.team.register(
-            TeamMember(user_id=user.id, username=user.username, full_name=user.full_name)
-        )
+    member = _register_user(message, c)
+
+    if await _handle_private_companion(message, c, member):
+        return
 
     text = message.text or ""
     chat_id = message.chat.id
     # пополняем историю чата ДО извлечения (сообщение войдёт в контекст)
-    c.history.add(chat_id, _author(user), text)
+    c.history.add(chat_id, _author(message.from_user), text)
 
     # Команда над существующей задачей (закрой/в работу/удали) — раньше извлечения
     cmd = task_commands.detect(text)
