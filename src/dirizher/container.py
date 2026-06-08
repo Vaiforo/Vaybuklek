@@ -16,6 +16,7 @@ from .logging_setup import get_logger
 from .memory.project_snapshot import ProjectSnapshot
 from .memory.vector_store import TaskMemory
 from .repository import TaskRepository, TeamRegistry
+from .services.cabinet import PersonalCabinet
 from .services.meeting import MeetingService
 from .services.reconciliation import ReconciliationService
 from .services.task_service import TaskService
@@ -68,6 +69,7 @@ class AppContainer:
         )
         self.reconciliation = ReconciliationService(self.repo, self.team, self.service)
         self.meeting = MeetingService(self.service)
+        self.cabinet = PersonalCabinet(self.repo, self.team)
         self.mode = ModeStore(default_auto=False)
         self.pending = PendingStore()
         self.history = ChatHistory()

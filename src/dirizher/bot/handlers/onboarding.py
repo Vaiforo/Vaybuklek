@@ -84,7 +84,14 @@ async def on_new_members(message: Message, c: AppContainer) -> None:
 async def on_introduce_self(cb: CallbackQuery, c: AppContainer, state: FSMContext) -> None:
     u = cb.from_user
     # базовую личность фиксируем сразу, детали (email/прозвища) — следующим сообщением
-    c.team.register(TeamMember(user_id=u.id, username=u.username, full_name=u.full_name))
+    c.team.register(
+        TeamMember(
+            user_id=u.id,
+            username=u.username,
+            full_name=u.full_name,
+            dm_chat_id=cb.message.chat.id if isinstance(cb.message, Message) and cb.message.chat.type == "private" else None,
+        )
+    )
     await state.set_state(Introduce.waiting_details)
     await cb.answer()
     if isinstance(cb.message, Message):
@@ -111,8 +118,14 @@ async def on_details(message: Message, c: AppContainer, state: FSMContext) -> No
 
     await state.clear()
     member = c.team.register(
-        TeamMember(user_id=u.id, username=u.username, full_name=u.full_name,
-                   aliases=aliases, email=email)
+        TeamMember(
+            user_id=u.id,
+            username=u.username,
+            full_name=u.full_name,
+            aliases=aliases,
+            email=email,
+            dm_chat_id=message.chat.id if message.chat.type == "private" else None,
+        )
     )
 
     # Привязка к реальному пользователю доски YouGile по email
@@ -156,7 +169,13 @@ async def on_claim(cb: CallbackQuery, callback_data: IntroCD, c: AppContainer) -
     name = callback_data.name
     # регистрируем нажавшего и добавляем имя-из-задачи как алиас
     member = c.team.register(
-        TeamMember(user_id=u.id, username=u.username, full_name=u.full_name, aliases=[name] if name else [])
+        TeamMember(
+            user_id=u.id,
+            username=u.username,
+            full_name=u.full_name,
+            aliases=[name] if name else [],
+            dm_chat_id=cb.message.chat.id if isinstance(cb.message, Message) and cb.message.chat.type == "private" else None,
+        )
     )
     handle = member.username or member.full_name
 
