@@ -33,7 +33,9 @@ class FallbackAsyncGroq:
         self.audio = None
 
 
-if find_spec("groq") is not None:
+HAS_GROQ = find_spec("groq") is not None
+
+if HAS_GROQ:
     from groq import AsyncGroq, RateLimitError
 else:
     AsyncGroq = FallbackAsyncGroq

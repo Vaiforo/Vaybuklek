@@ -61,8 +61,11 @@ def build_transcriber(
         if not keys:
             log.warning("Groq Whisper включён, но ключей нет — откатываюсь в mock")
             return MockTranscriber()
-        from .groq_transcriber import GroqWhisperTranscriber
+        from .groq_transcriber import HAS_GROQ, GroqWhisperTranscriber
 
+        if not HAS_GROQ:
+            log.warning("Groq Whisper включён, но пакет groq не установлен — откатываюсь в mock")
+            return MockTranscriber()
         log.info("Распознавание речи: Groq Whisper (%s)", cfg.groq_whisper_model)
         return GroqWhisperTranscriber(keys, cfg.groq_whisper_model)
 

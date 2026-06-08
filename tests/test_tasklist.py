@@ -54,3 +54,11 @@ def test_board_keyboard_delete_confirmation():
     labels = [b.text for row in kb.inline_keyboard for b in row]
     assert any("Да, удалить" in label for label in labels)
     assert any("Отмена" in label for label in labels)
+
+
+def test_board_keyboard_delete_confirmation_preserves_current_status():
+    kb = board_task_keyboard("card1", TaskStatus.in_progress, confirm_delete=True)
+    labels = [b.text for row in kb.inline_keyboard for b in row]
+    assert any(label.startswith("✓ ") and "В работу" in label for label in labels)
+    assert any("Да, удалить" in label for label in labels)
+    assert any("Отмена" in label for label in labels)
