@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 
 from ..container import AppContainer
-from ..domain.enums import TaskSource, TaskStatus
+from ..domain.enums import TaskSource
 from ..domain.models import SourceRef, TeamMember
 from ..logging_setup import setup_logging
 from ..services.task_service import Outcome

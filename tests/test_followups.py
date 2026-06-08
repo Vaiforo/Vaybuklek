@@ -6,7 +6,7 @@ import pytest
 
 from dirizher.bot import task_commands
 from dirizher.container import AppContainer
-from dirizher.domain.enums import Priority, TaskSource, TaskStatus
+from dirizher.domain.enums import Priority, TaskSource
 from dirizher.domain.models import SourceRef, TeamMember
 from dirizher.services.task_service import Outcome, _split_assignees
 

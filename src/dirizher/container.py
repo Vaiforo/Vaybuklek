@@ -19,6 +19,7 @@ from .memory.project_snapshot import ProjectSnapshot
 from .memory.vector_store import TaskMemory
 from .repository import TaskRepository, TeamRegistry
 from .services.gamification import GamificationService, GameStore
+from .services.cabinet import PersonalCabinet
 from .services.meeting import MeetingService
 from .state_store import StateStore
 from .services.reconciliation import ReconciliationService
@@ -91,6 +92,7 @@ class AppContainer:
             self.repo, self.team, self.service, game=self.game
         )
         self.meeting = MeetingService(self.service)
+        self.cabinet = PersonalCabinet(self.repo, self.team)
         self.mode = ModeStore(default_auto=False)
         self.pending = PendingStore()
         self.history = ChatHistory()

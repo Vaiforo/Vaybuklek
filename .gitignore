@@ -5,6 +5,7 @@
 
 # Данные среды выполнения
 .data/
+logs/
 *.sqlite3
 *.db
 chroma/

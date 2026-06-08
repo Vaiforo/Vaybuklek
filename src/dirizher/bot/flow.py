@@ -18,13 +18,33 @@ from ..container import AppContainer
 from ..services.task_service import Outcome, ProcessedTask
 from . import keyboards as kb
 from . import text as tx
+from .notifications import send_with_fallback
 
 
 async def notify_workload(bot: Bot, c: AppContainer, assignee: str | None, chat_id: int) -> None:
-    """Предупредить чат о перегрузке исполнителя (если есть)."""
+    """Предупредить о перегрузке: лично, если пользователь открыл диалог, иначе в чат."""
     warning = c.service.workload_warning(assignee)
-    if warning:
-        await bot.send_message(chat_id, warning)
+    if not warning:
+        return
+    member = c.team.resolve(assignee)
+    target = member.dm_chat_id if member and member.dm_chat_id else chat_id
+    await send_with_fallback(bot, target, warning, fallback_chat_id=chat_id)
+
+
+async def notify_assignee(bot: Bot, c: AppContainer, created, chat_id: int) -> None:
+    """Отправить персональное уведомление исполнителю, если доступен личный чат."""
+    member = c.team.resolve(created.assignee)
+    if not member or not member.dm_chat_id or member.dm_chat_id == chat_id:
+        return
+    stats = c.cabinet.stats_for(member)
+    await send_with_fallback(
+        bot,
+        member.dm_chat_id,
+        "🎯 <b>Вам назначена задача</b>\n\n"
+        + tx.render_task_card(created, header="📌 Назначение")
+        + f"\n\n🎮 Сейчас: уровень {stats.level}, {stats.xp} XP",
+        fallback_chat_id=chat_id,
+    )
 
 
 async def present(bot: Bot, c: AppContainer, processed: list[ProcessedTask], chat_id: int) -> None:
@@ -48,6 +68,7 @@ async def present(bot: Bot, c: AppContainer, processed: list[ProcessedTask], cha
             if auto:
                 created = await c.service.create_on_board(p.task)
                 await bot.send_message(chat_id, tx.render_created(created))
+                await notify_assignee(bot, c, created, chat_id)
                 await notify_workload(bot, c, created.assignee, chat_id)
             else:
                 await _ask_confirm(bot, c, p, chat_id)
