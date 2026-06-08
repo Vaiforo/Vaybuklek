@@ -5,8 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import httpx
-import pytest
 
+from dirizher.audio import groq_transcriber
 from dirizher.audio.groq_transcriber import GroqWhisperTranscriber
 from dirizher.audio.transcriber import MockTranscriber, build_transcriber
 from dirizher.config import AudioSettings
@@ -18,16 +18,24 @@ def test_disabled_returns_mock():
     assert isinstance(t, MockTranscriber)
 
 
-def test_groq_backend_with_own_keys():
+def test_groq_backend_with_own_keys(monkeypatch):
+    monkeypatch.setattr(groq_transcriber, "HAS_GROQ", True)
     cfg = AudioSettings(enabled=True, backend="groq", groq_api_key="k1")
     t = build_transcriber(cfg)
     assert t.name == "groq-whisper"
 
 
-def test_groq_backend_falls_back_to_llm_keys():
+def test_groq_backend_falls_back_to_llm_keys(monkeypatch):
+    monkeypatch.setattr(groq_transcriber, "HAS_GROQ", True)
     cfg = AudioSettings(enabled=True, backend="groq")  # своих ключей нет
     t = build_transcriber(cfg, fallback_groq_keys=["llm-key"])
     assert t.name == "groq-whisper"
+
+
+def test_groq_backend_without_package_returns_mock(monkeypatch):
+    monkeypatch.setattr(groq_transcriber, "HAS_GROQ", False)
+    cfg = AudioSettings(enabled=True, backend="groq", groq_api_key="k1")
+    assert isinstance(build_transcriber(cfg), MockTranscriber)
 
 
 def test_groq_backend_no_keys_returns_mock():
@@ -103,7 +111,7 @@ def test_join_consecutive_groups_by_speaker():
 
 
 async def test_groq_transcribe_rotates_on_rate_limit(tmp_path):
-    from groq import RateLimitError
+    from dirizher.audio.groq_transcriber import RateLimitError
 
     err = RateLimitError(
         "limit",

@@ -44,13 +44,21 @@ def test_board_keyboard_checkmark_on_current_status():
     kb = board_task_keyboard("card1", TaskStatus.in_progress)
     labels = [b.text for row in kb.inline_keyboard for b in row]
     # галочка только у текущего статуса
-    assert any(l.startswith("✓ ") and "В работу" in l for l in labels)
-    assert not any(l.startswith("✓ ") and "Готово" in l for l in labels)
-    assert any("Удалить" in l for l in labels)
+    assert any(label.startswith("✓ ") and "В работу" in label for label in labels)
+    assert not any(label.startswith("✓ ") and "Готово" in label for label in labels)
+    assert any("Удалить" in label for label in labels)
 
 
 def test_board_keyboard_delete_confirmation():
     kb = board_task_keyboard("card1", TaskStatus.todo, confirm_delete=True)
     labels = [b.text for row in kb.inline_keyboard for b in row]
-    assert any("Да, удалить" in l for l in labels)
-    assert any("Отмена" in l for l in labels)
+    assert any("Да, удалить" in label for label in labels)
+    assert any("Отмена" in label for label in labels)
+
+
+def test_board_keyboard_delete_confirmation_preserves_current_status():
+    kb = board_task_keyboard("card1", TaskStatus.in_progress, confirm_delete=True)
+    labels = [b.text for row in kb.inline_keyboard for b in row]
+    assert any(label.startswith("✓ ") and "В работу" in label for label in labels)
+    assert any("Да, удалить" in label for label in labels)
+    assert any("Отмена" in label for label in labels)

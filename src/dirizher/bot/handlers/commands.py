@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re as _re
 from html import escape as esc
 
 from aiogram import Router
@@ -25,13 +26,13 @@ HELP = """\
 <b>Работа с задачами</b>
 /mode auto|manual — авто-режим или подтверждение
 /board — канбан-доска
-/tasks — мои открытые задачи
-/profile — мой игровой профиль: XP, уровень, ачивки 🎮
-/leaderboard — рейтинг команды по очкам 🏆
+/tasks — мои открытые задачи с кнопками статуса
 /report текст — вечерний отчёт (бот сам проставит статусы)
 /reconcile — показать вечернюю сверку сейчас
 /remind — проверить дедлайны и напомнить
 /sync — сверить память с доской (убрать «призраков»)
+
+<b>Команда и встречи</b>
 /join — представиться (чтобы я мог вешать на вас задачи)
 /register Имя; алиас1, алиас2 — представиться с алиасами
 /alias энди, стеф — заменить свои прозвища (для тёзок)
@@ -39,23 +40,15 @@ HELP = """\
 /enroll_voice — запомнить мой голос (подпись реплик на встречах)
 /meeting_stop — остановить запись встречи
 /forget — забыть всех участников (сброс памяти команды)
-/help — эта справка
 
 🎤 Кинь в чат ссылку Яндекс.Телемоста — я начну писать звук встречи, а в конце
 пришлю саммари и вынесу задачи на доску.
 
-Совет: нажмите «👋 Представиться» — так я свяжу ваше имя с аккаунтом.
-/report текст — вечерний отчёт
-/reconcile — сверка отчётов сейчас
-/remind — проверить дедлайны
-
 <b>Личный кабинет</b>
 /profile — профиль, метрики, XP и ачивки
+/leaderboard — рейтинг команды по очкам 🏆
 /note текст — добавить личную заметку
 /notes — показать мои заметки
-/whoami — как я вас вижу
-/join — связать Telegram с профилем
-/register Имя; алиасы — имя и прозвища
 
 <b>База знаний</b>
 /kb — последние знания команды
@@ -130,10 +123,6 @@ async def cmd_board(message: Message, c: AppContainer) -> None:
     await message.answer(tx.render_board(cards))
 
 
-import re as _re
-
-from ...domain.models import TeamMember as _TeamMember
-
 _MENTION_RE = _re.compile(r"@([A-Za-z0-9_]{3,})")
 
 
@@ -170,7 +159,7 @@ def _resolve_target(c: AppContainer, text: str, author) -> tuple[object | None, 
     if author is not None:
         # автор всегда известен (регистрируем на лету), матч по имени/привязке
         member = c.team.register(
-            _TeamMember(user_id=author.id, username=author.username, full_name=author.full_name)
+            TeamMember(user_id=author.id, username=author.username, full_name=author.full_name)
         )
         return member, "вами", True
     return None, "", False
@@ -215,22 +204,13 @@ async def cmd_tasks(message: Message, c: AppContainer) -> None:
     await send_my_tasks(message, c)
 
 
-@router.message(Command("profile", "me", "profil", "профиль"))
+@router.message(Command("profile", "cabinet", "me", "profil", "профиль"))
 async def cmd_profile(message: Message, command: CommandObject, c: AppContainer) -> None:
-    """Игровой профиль: свой или указанного @username (п.10)."""
-    user = message.from_user
+    """Единый личный кабинет: задачи/метрики + игровой профиль XP."""
+    member = _member_from_message(message, c)
     arg = (command.args or "").strip()
-    if arg:
-        target = arg
-    elif user:
-        # запоминаем автора на лету, чтобы профиль вёлся по стабильному ключу
-        c.team.register(
-            TeamMember(user_id=user.id, username=user.username, full_name=user.full_name)
-        )
-        target = user.username or user.full_name
-    else:
-        target = ""
-    await message.answer(c.game.render_profile(target))
+    target = arg or member.username or member.full_name
+    await message.answer(c.cabinet.render_profile(member) + "\n\n" + c.game.render_profile(target))
 
 
 @router.message(Command("leaderboard", "top", "leaders", "рейтинг", "топ"))
@@ -246,16 +226,6 @@ async def cmd_game_reset(message: Message, c: AppContainer) -> None:
         f"🧹 Лидерборд обнулён (удалено профилей: {n}). Очки начнут копиться заново "
         f"по мере закрытия задач."
     )
-    member = _member_from_message(message, c)
-    name = member.username or member.full_name
-    tasks = c.repo.open_by_assignee(name) if name else []
-    await message.answer(tx.render_tasks(tasks))
-
-
-@router.message(Command("profile", "cabinet"))
-async def cmd_profile(message: Message, c: AppContainer) -> None:
-    member = _member_from_message(message, c)
-    await message.answer(c.cabinet.render_profile(member))
 
 
 @router.message(Command("note"))

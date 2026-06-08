@@ -14,8 +14,7 @@ from ...logging_setup import get_logger
 from .. import keyboards as kb
 from .. import text as tx
 from ..callback_data import BoardCD, ConfirmCD, ForgetCD, TaskCD
-from ..callback_data import ConfirmCD, TaskCD
-from ..flow import notify_assignee, notify_workload
+from ..flow import notify_workload
 from ..states import EditTask
 
 router = Router(name="callbacks")
@@ -30,12 +29,15 @@ async def _finish(cb: CallbackQuery, text: str) -> None:
 
 async def _celebrate(c: AppContainer, message, task) -> None:
     """Начислить XP за закрытие и прислать короткое поздравление (если есть)."""
+    try:
         lines = c.game.complete(task)
     except Exception as e:  # noqa: BLE001
         log.warning("Геймификация: не удалось начислить XP: %s", e)
         return
     if lines and isinstance(message, Message):
         await message.answer("\n".join(lines))
+
+
 async def _after_created(cb: CallbackQuery, c: AppContainer, created) -> None:
     if isinstance(cb.message, Message):
         await notify_workload(cb.bot, c, created.assignee, cb.message.chat.id)
@@ -124,8 +126,6 @@ async def on_task_action(cb: CallbackQuery, callback_data: TaskCD, c: AppContain
         await c.service.set_status(task, TaskStatus.done)
         await cb.answer("✅ Готово")
         await _celebrate(c, cb.message, task)
-        stats = c.cabinet.stats_for(task.assignee)
-        await cb.answer(f"✅ Готово · уровень {stats.level}, {stats.xp} XP")
     elif callback_data.action == "start":
         await c.service.set_status(task, TaskStatus.in_progress)
         await cb.answer("▶️ В работе")
@@ -156,12 +156,18 @@ _BOARD_STATUS = {
 }
 
 
-async def _sync_repo_status(c: AppContainer, card_id: str, status: TaskStatus) -> None:
-    """Если задача есть в локальной памяти — обновим её статус заодно."""
+async def _card_status(c: AppContainer, card_id: str, fallback: TaskStatus = TaskStatus.todo) -> TaskStatus:
+    """Текущий статус карточки из локальной памяти или живой доски."""
     task = c.repo.get_by_card(card_id)
     if task is not None:
-        task.status = status
-        task.touch()
+        return task.status
+    try:
+        for card in await c.board.list_cards():
+            if card.id == card_id:
+                return card.status
+    except Exception as e:  # noqa: BLE001
+        log.warning("Не удалось получить статус карточки %s: %s", card_id, e)
+    return fallback
 
 
 @router.callback_query(BoardCD.filter())
@@ -172,49 +178,52 @@ async def on_board_action(cb: CallbackQuery, callback_data: BoardCD, c: AppConta
     # Смена статуса (todo / in_progress / done)
     if action in _BOARD_STATUS:
         status = _BOARD_STATUS[action]
+        task = c.repo.get_by_card(cid)
         try:
-            # move_card переносит в нужную колонку и синхронизирует флаг completed
-            await c.board.move_card(cid, status)
+            if task is not None:
+                await c.service.set_status(task, status)
+            else:
+                # В /tasks карточка может прийти прямо из YouGile и отсутствовать в памяти.
+                await c.board.move_card(cid, status)
         except Exception as e:  # noqa: BLE001
             log.warning("Не удалось сменить статус карточки %s: %s", cid, e)
             await cb.answer("Не получилось обновить на доске 🙈", show_alert=True)
             return
-        await _sync_repo_status(c, cid, status)
         await cb.answer(f"{status.label_ru} ✓")
-        if status is TaskStatus.done:
-            task = c.repo.get_by_card(cid)
-            if task is not None:
-                await _celebrate(c, msg, task)
+        if status is TaskStatus.done and task is not None:
+            await _celebrate(c, msg, task)
         if msg:
             await msg.edit_reply_markup(reply_markup=kb.board_task_keyboard(cid, status))
         return
 
     # Запрос на удаление → показать подтверждение
     if action == "del":
+        current = await _card_status(c, cid)
         if msg:
             await msg.edit_reply_markup(
-                reply_markup=kb.board_task_keyboard(cid, TaskStatus.todo, confirm_delete=True)
+                reply_markup=kb.board_task_keyboard(cid, current, confirm_delete=True)
             )
         await cb.answer("Удалить задачу?")
         return
 
     if action == "del_no":
+        current = await _card_status(c, cid)
         if msg:
-            await msg.edit_reply_markup(reply_markup=kb.board_task_keyboard(cid, TaskStatus.todo))
+            await msg.edit_reply_markup(reply_markup=kb.board_task_keyboard(cid, current))
         await cb.answer("Отменено")
         return
 
     if action == "del_yes":
+        task = c.repo.get_by_card(cid)
         try:
-            await c.board.delete_card(cid)
+            if task is not None:
+                await c.service.delete_task(task)
+            else:
+                await c.board.delete_card(cid)
         except Exception as e:  # noqa: BLE001
             log.warning("Не удалось удалить карточку %s: %s", cid, e)
             await cb.answer("Не получилось удалить 🙈", show_alert=True)
             return
-        task = c.repo.get_by_card(cid)
-        if task is not None:
-            c.repo.remove(task.id)
-            c.memory.forget(task.id)
         await cb.answer("🗑️ Удалено")
         if msg:
             await msg.edit_text("🗑️ Задача удалена.")

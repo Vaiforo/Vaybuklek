@@ -12,8 +12,34 @@ import asyncio
 import os
 from pathlib import Path
 
+from importlib.util import find_spec
+
 from ..logging_setup import get_logger
 from .transcriber import TranscriptResult
+
+
+class FallbackRateLimitError(Exception):
+    """Совместимый fallback для тестов и mock-режима без пакета groq."""
+
+    def __init__(self, message: str, response=None, body=None) -> None:
+        super().__init__(message)
+        self.response = response
+        self.body = body
+
+
+class FallbackAsyncGroq:
+    def __init__(self, api_key: str) -> None:
+        self.api_key = api_key
+        self.audio = None
+
+
+HAS_GROQ = find_spec("groq") is not None
+
+if HAS_GROQ:
+    from groq import AsyncGroq, RateLimitError
+else:
+    AsyncGroq = FallbackAsyncGroq
+    RateLimitError = FallbackRateLimitError
 
 log = get_logger("dirizher.audio.groq")
 
@@ -22,16 +48,12 @@ class GroqWhisperTranscriber:
     name = "groq-whisper"
 
     def __init__(self, api_keys: list[str], model: str) -> None:
-        from groq import AsyncGroq  # ленивый импорт
-
         self._clients = [AsyncGroq(api_key=k) for k in api_keys]
         self._model = model
         self._idx = 0  # индекс текущего рабочего ключа
         log.info("Groq Whisper (%s): ключей в ротации — %d", model, len(self._clients))
 
     async def transcribe(self, file_path: str) -> TranscriptResult:
-        from groq import RateLimitError
-
         data = await asyncio.to_thread(Path(file_path).read_bytes)
         filename = os.path.basename(file_path) or "audio.ogg"
 

@@ -80,18 +80,19 @@ def board_task_keyboard(card_id: str, current: TaskStatus, *, confirm_delete: bo
 
     При confirm_delete показываем подтверждение удаления вместо обычного ряда.
     """
-    if confirm_delete:
-        rows = [[
-            InlineKeyboardButton(text="🗑️ Да, удалить", callback_data=BoardCD(action="del_yes", cid=card_id).pack()),
-            InlineKeyboardButton(text="↩️ Отмена", callback_data=BoardCD(action="del_no", cid=card_id).pack()),
-        ]]
-        return InlineKeyboardMarkup(inline_keyboard=rows)
-
     status_row = []
     for status, (label, action) in _STATUS_BTN.items():
         mark = "✓ " if status == current else ""
         status_row.append(
             InlineKeyboardButton(text=f"{mark}{label}", callback_data=BoardCD(action=action, cid=card_id).pack())
         )
+
+    if confirm_delete:
+        confirm_row = [
+            InlineKeyboardButton(text="🗑️ Да, удалить", callback_data=BoardCD(action="del_yes", cid=card_id).pack()),
+            InlineKeyboardButton(text="↩️ Отмена", callback_data=BoardCD(action="del_no", cid=card_id).pack()),
+        ]
+        return InlineKeyboardMarkup(inline_keyboard=[status_row, confirm_row])
+
     delete_row = [InlineKeyboardButton(text="🗑️ Удалить", callback_data=BoardCD(action="del", cid=card_id).pack())]
     return InlineKeyboardMarkup(inline_keyboard=[status_row, delete_row])

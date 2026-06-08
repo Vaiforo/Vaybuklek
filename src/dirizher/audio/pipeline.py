@@ -272,16 +272,40 @@ class WhisperPipeline:
         """
         if len(vecs) == 1:
             return [0]
-        import numpy as np
-        from scipy.cluster.hierarchy import fcluster, linkage
-        from scipy.spatial.distance import pdist
 
-        dist = pdist(np.asarray(vecs, dtype=float), metric="cosine")
-        if dist.size == 0:
-            return [0] * len(vecs)
-        z = linkage(dist, method="average")
         cut = max(0.05, 1.0 - self._registry.threshold)  # косинус-дистанция среза
-        return [int(c) for c in fcluster(z, t=cut, criterion="distance")]
+        clusters: list[list[int]] = [[i] for i in range(len(vecs))]
+
+        def cosine_distance(a: list[float], b: list[float]) -> float:
+            import math
+
+            dot = sum(x * y for x, y in zip(a, b))
+            na = math.sqrt(sum(x * x for x in a))
+            nb = math.sqrt(sum(y * y for y in b))
+            return 1.0 - (dot / (na * nb)) if na and nb else 1.0
+
+        def average_distance(left: list[int], right: list[int]) -> float:
+            pairs = [cosine_distance(vecs[i], vecs[j]) for i in left for j in right]
+            return sum(pairs) / len(pairs)
+
+        while len(clusters) > 1:
+            best: tuple[float, int, int] | None = None
+            for i in range(len(clusters)):
+                for j in range(i + 1, len(clusters)):
+                    dist = average_distance(clusters[i], clusters[j])
+                    if best is None or dist < best[0]:
+                        best = (dist, i, j)
+            if best is None or best[0] > cut:
+                break
+            _dist, i, j = best
+            clusters[i].extend(clusters[j])
+            del clusters[j]
+
+        labels = [0] * len(vecs)
+        for cid, members in enumerate(clusters):
+            for i in members:
+                labels[i] = cid
+        return labels
 
     @staticmethod
     def _mean_vec(vectors: list[list[float]]) -> list[float]:
