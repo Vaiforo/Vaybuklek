@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re as _re
 from html import escape as esc
 
 from aiogram import Router
@@ -130,10 +131,6 @@ async def cmd_board(message: Message, c: AppContainer) -> None:
     await message.answer(tx.render_board(cards))
 
 
-import re as _re
-
-from ...domain.models import TeamMember as _TeamMember
-
 _MENTION_RE = _re.compile(r"@([A-Za-z0-9_]{3,})")
 
 
@@ -170,7 +167,7 @@ def _resolve_target(c: AppContainer, text: str, author) -> tuple[object | None, 
     if author is not None:
         # автор всегда известен (регистрируем на лету), матч по имени/привязке
         member = c.team.register(
-            _TeamMember(user_id=author.id, username=author.username, full_name=author.full_name)
+            TeamMember(user_id=author.id, username=author.username, full_name=author.full_name)
         )
         return member, "вами", True
     return None, "", False
@@ -215,22 +212,13 @@ async def cmd_tasks(message: Message, c: AppContainer) -> None:
     await send_my_tasks(message, c)
 
 
-@router.message(Command("profile", "me", "profil", "профиль"))
+@router.message(Command("profile", "cabinet", "me", "profil", "профиль"))
 async def cmd_profile(message: Message, command: CommandObject, c: AppContainer) -> None:
-    """Игровой профиль: свой или указанного @username (п.10)."""
-    user = message.from_user
+    """Единый личный кабинет: задачи/метрики + игровой профиль XP."""
+    member = _member_from_message(message, c)
     arg = (command.args or "").strip()
-    if arg:
-        target = arg
-    elif user:
-        # запоминаем автора на лету, чтобы профиль вёлся по стабильному ключу
-        c.team.register(
-            TeamMember(user_id=user.id, username=user.username, full_name=user.full_name)
-        )
-        target = user.username or user.full_name
-    else:
-        target = ""
-    await message.answer(c.game.render_profile(target))
+    target = arg or member.username or member.full_name
+    await message.answer(c.cabinet.render_profile(member) + "\n\n" + c.game.render_profile(target))
 
 
 @router.message(Command("leaderboard", "top", "leaders", "рейтинг", "топ"))
@@ -246,16 +234,6 @@ async def cmd_game_reset(message: Message, c: AppContainer) -> None:
         f"🧹 Лидерборд обнулён (удалено профилей: {n}). Очки начнут копиться заново "
         f"по мере закрытия задач."
     )
-    member = _member_from_message(message, c)
-    name = member.username or member.full_name
-    tasks = c.repo.open_by_assignee(name) if name else []
-    await message.answer(tx.render_tasks(tasks))
-
-
-@router.message(Command("profile", "cabinet"))
-async def cmd_profile(message: Message, c: AppContainer) -> None:
-    member = _member_from_message(message, c)
-    await message.answer(c.cabinet.render_profile(member))
 
 
 @router.message(Command("note"))

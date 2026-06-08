@@ -44,6 +44,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["asyncio: marks async tests"]
 
 [tool.ruff]
 line-length = 100

@@ -89,6 +89,10 @@ class SignalEmbedder:
 
     # ── публичный API эмбеддера ──────────────────────────────────────────────
     def embed_file(self, wav_path: str) -> list[float]:
+        if str(wav_path).lower().endswith(".wav"):
+            samples, sr = _read_wav_mono(wav_path)
+            return self._embed_samples(samples, sr)
+
         from .decode import decode_mono16k
 
         samples, sr = decode_mono16k(wav_path)
@@ -112,6 +116,10 @@ class SignalEmbedder:
 
     # ── вычисление признаков ─────────────────────────────────────────────────
     def _embed_samples(self, samples, sr: int) -> list[float]:
+        from importlib.util import find_spec
+
+        if find_spec("numpy") is None:
+            return _embed_samples_plain(samples, sr)
         import numpy as np
 
         x = np.asarray(samples, dtype=np.float32).reshape(-1)
@@ -178,13 +186,98 @@ class SignalEmbedder:
         return fb
 
 
+def _read_wav_mono(wav_path: str) -> tuple[list[float], int]:
+    """Прочитать PCM WAV через stdlib, чтобы mock/MVP не требовал soundfile/numpy."""
+    import wave
+
+    with wave.open(str(wav_path), "rb") as wf:
+        channels = wf.getnchannels()
+        width = wf.getsampwidth()
+        sr = wf.getframerate()
+        raw = wf.readframes(wf.getnframes())
+    if width not in {1, 2, 4}:
+        return [], sr
+
+    max_abs = float(2 ** (8 * width - 1))
+    frames = []
+    stride = width * channels
+    for offset in range(0, len(raw), stride):
+        values = []
+        for ch in range(channels):
+            start = offset + ch * width
+            chunk = raw[start : start + width]
+            if len(chunk) != width:
+                continue
+            if width == 1:
+                value = int.from_bytes(chunk, "little", signed=False) - 128
+            else:
+                value = int.from_bytes(chunk, "little", signed=True)
+            values.append(value / max_abs)
+        if values:
+            frames.append(sum(values) / len(values))
+    return frames, sr
+
+
+def _resample_plain(samples: list[float], src_sr: int, dst_sr: int) -> list[float]:
+    if src_sr == dst_sr or not samples:
+        return samples
+    dst_n = int(round(len(samples) * dst_sr / src_sr))
+    if dst_n <= 0:
+        return []
+    out: list[float] = []
+    scale = (len(samples) - 1) / max(1, dst_n - 1)
+    for i in range(dst_n):
+        pos = i * scale
+        left = int(pos)
+        right = min(left + 1, len(samples) - 1)
+        frac = pos - left
+        out.append(samples[left] * (1.0 - frac) + samples[right] * frac)
+    return out
+
+
+def _embed_samples_plain(samples, sr: int) -> list[float]:
+    """Лёгкий голосовой отпечаток без numpy/scipy: нормализованная автокорреляция.
+
+    Этого достаточно для демо/MVP и тестов: один голос даёт похожий рисунок
+    периодичности, разные базовые частоты расходятся по косинусу.
+    """
+    import math
+
+    x = [float(v) for v in samples]
+    if sr != 16000:
+        x = _resample_plain(x, sr, 16000)
+        sr = 16000
+    if len(x) < int(0.3 * sr):
+        return []
+    mean = sum(x) / len(x)
+    x = [v - mean for v in x]
+    energy = sum(v * v for v in x)
+    if not energy:
+        return []
+    # Лаги 50..220 сэмплов покрывают примерно 73..320 Гц — диапазон голоса.
+    step = 4
+    feats: list[float] = []
+    for lag in range(50, 221, 5):
+        n = len(x) - lag
+        if n <= 0:
+            feats.append(0.0)
+            continue
+        corr = sum(x[i] * x[i + lag] for i in range(0, n, step)) * step / energy
+        feats.append(corr)
+    avg = sum(feats) / len(feats)
+    feats = [f - avg for f in feats]
+    norm = math.sqrt(sum(f * f for f in feats))
+    return [f / norm for f in feats] if norm else feats
+
+
 def _to_list(emb) -> list[float]:
-    try:
+    from importlib.util import find_spec
+
+    if find_spec("numpy") is not None:
         import numpy as np
 
         return np.asarray(emb).reshape(-1).astype(float).tolist()
-    except Exception:  # noqa: BLE001
-        return list(emb)
+    return list(emb)
 
 
 def _mean(vectors: list[list[float]]) -> list[float]:

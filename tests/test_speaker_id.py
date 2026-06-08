@@ -8,11 +8,11 @@
 
 from __future__ import annotations
 
-import tempfile
+import math
+import random
+import wave
 
-import numpy as np
 import pytest
-import soundfile as sf
 
 from dirizher.audio.embeddings import SignalEmbedder, build_embedder
 from dirizher.audio.pipeline import WhisperPipeline, _TimedSegment
@@ -156,28 +156,46 @@ def test_build_embedder_selection():
 
 
 def test_signal_embedder_separates_real_voices(tmp_path):
-    """Реальный MFCC-эмбеддер: один голос узнаётся, чужой — отвергается."""
+    """Реальный signal-эмбеддер: один голос узнаётся, чужой — отвергается."""
     emb = SignalEmbedder()
 
     def voice(f0, seed, dur=4.0, sr=16000):
-        rng = np.random.default_rng(seed)
-        t = np.arange(int(sr * dur)) / sr
-        sig = sum(a * np.sin(2 * np.pi * f0 * m * t + rng.random())
-                  for m, a in [(1, 1.0), (2, 0.5), (3, 0.3), (5, 0.15)])
-        sig = sig + 0.02 * rng.standard_normal(t.shape)
-        return (sig / np.max(np.abs(sig))).astype(np.float32)
+        rng = random.Random(seed)
+        phases = {m: rng.random() for m, _a in [(1, 1.0), (2, 0.5), (3, 0.3), (5, 0.15)]}
+        sig = []
+        for i in range(int(sr * dur)):
+            t = i / sr
+            val = sum(
+                a * math.sin(2 * math.pi * f0 * m * t + phases[m])
+                for m, a in [(1, 1.0), (2, 0.5), (3, 0.3), (5, 0.15)]
+            )
+            val += 0.02 * rng.gauss(0.0, 1.0)
+            sig.append(val)
+        peak = max(abs(x) for x in sig) or 1.0
+        return [x / peak for x in sig]
 
-    def wav(sig):
-        p = str(tmp_path / f"{abs(hash(sig.tobytes())) % 99999}.wav")
-        sf.write(p, sig, 16000)
+    def wav(sig, idx):
+        p = str(tmp_path / f"voice-{idx}.wav")
+        frames = bytearray()
+        for value in sig:
+            sample = int(max(-1.0, min(1.0, value)) * 32767)
+            frames.extend(sample.to_bytes(2, "little", signed=True))
+        with wave.open(p, "wb") as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)
+            wf.setframerate(16000)
+            wf.writeframes(bytes(frames))
         return p
 
-    a1, a2 = emb.embed_file(wav(voice(120, 1))), emb.embed_file(wav(voice(120, 2)))
-    b1 = emb.embed_file(wav(voice(210, 3)))
+    a1 = emb.embed_file(wav(voice(120, 1), 1))
+    a2 = emb.embed_file(wav(voice(120, 2), 2))
+    b1 = emb.embed_file(wav(voice(210, 3), 3))
 
     def cos(x, y):
-        x, y = np.array(x), np.array(y)
-        return float(x @ y / (np.linalg.norm(x) * np.linalg.norm(y)))
+        dot = sum(a * b for a, b in zip(x, y))
+        nx = math.sqrt(sum(a * a for a in x))
+        ny = math.sqrt(sum(b * b for b in y))
+        return dot / (nx * ny)
 
     assert cos(a1, a2) > cos(a1, b1) + 0.2  # тот же голос заметно ближе, чем чужой
 

@@ -14,8 +14,7 @@ from ...logging_setup import get_logger
 from .. import keyboards as kb
 from .. import text as tx
 from ..callback_data import BoardCD, ConfirmCD, ForgetCD, TaskCD
-from ..callback_data import ConfirmCD, TaskCD
-from ..flow import notify_assignee, notify_workload
+from ..flow import notify_workload
 from ..states import EditTask
 
 router = Router(name="callbacks")
@@ -30,12 +29,15 @@ async def _finish(cb: CallbackQuery, text: str) -> None:
 
 async def _celebrate(c: AppContainer, message, task) -> None:
     """Начислить XP за закрытие и прислать короткое поздравление (если есть)."""
+    try:
         lines = c.game.complete(task)
     except Exception as e:  # noqa: BLE001
         log.warning("Геймификация: не удалось начислить XP: %s", e)
         return
     if lines and isinstance(message, Message):
         await message.answer("\n".join(lines))
+
+
 async def _after_created(cb: CallbackQuery, c: AppContainer, created) -> None:
     if isinstance(cb.message, Message):
         await notify_workload(cb.bot, c, created.assignee, cb.message.chat.id)
@@ -124,8 +126,6 @@ async def on_task_action(cb: CallbackQuery, callback_data: TaskCD, c: AppContain
         await c.service.set_status(task, TaskStatus.done)
         await cb.answer("✅ Готово")
         await _celebrate(c, cb.message, task)
-        stats = c.cabinet.stats_for(task.assignee)
-        await cb.answer(f"✅ Готово · уровень {stats.level}, {stats.xp} XP")
     elif callback_data.action == "start":
         await c.service.set_status(task, TaskStatus.in_progress)
         await cb.answer("▶️ В работе")

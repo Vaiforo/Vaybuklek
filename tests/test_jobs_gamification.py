@@ -7,7 +7,7 @@ from datetime import date, timedelta
 import pytest
 
 from dirizher.container import AppContainer
-from dirizher.domain.enums import Priority, TaskSource, TaskStatus
+from dirizher.domain.enums import TaskSource
 from dirizher.domain.models import SourceRef, Task, TeamMember
 from dirizher.scheduler.jobs import run_leaderboard_post, run_morning_digest
 

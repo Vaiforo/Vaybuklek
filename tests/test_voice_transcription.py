@@ -5,7 +5,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import httpx
-import pytest
 
 from dirizher.audio.groq_transcriber import GroqWhisperTranscriber
 from dirizher.audio.transcriber import MockTranscriber, build_transcriber
@@ -103,7 +102,7 @@ def test_join_consecutive_groups_by_speaker():
 
 
 async def test_groq_transcribe_rotates_on_rate_limit(tmp_path):
-    from groq import RateLimitError
+    from dirizher.audio.groq_transcriber import RateLimitError
 
     err = RateLimitError(
         "limit",
