@@ -62,13 +62,15 @@ HELP = f"""\
 HELP_MEETINGS = f"""\
 🎙️ <b>Встречи и голос</b>
 {DIVIDER}
-• /meeting_source <code>[telemost|loopback]</code> — источник звука встреч
+• /meeting_source <code>[telemost|loopback|extension]</code> — источник звука встреч
+• /meeting_capture — захват созвона из браузера (конфиг расширения)
 • /meeting_stop — остановить запись встречи
 • /enroll_voice — запомнить мой голос, чтобы подписывать реплики
 • /who <code>Speaker_1 Имя</code> — подписать голос из последней записи
 
 💡 Кинул ссылку Телемоста в чат — я подключаюсь и пишу звонок сам.
 В режиме <code>loopback</code> пишу системный звук машины, что уже в звонке.
+В режиме <code>extension</code> звук шлёт браузерное расширение (см. /meeting_capture).
 """
 
 HELP_PROFILE = f"""\

@@ -207,6 +207,17 @@ async def on_telemost_link(message: Message, c: AppContainer) -> None:
             "(<code>DIRIZHER_AUDIO__ENABLED=false</code>) — запись не веду."
         )
         return
+    if c.meeting_source.get(chat_id) == "extension":
+        # В режиме расширения бот сам не пишет — звук приходит на /meeting/audio.
+        # Поднимаем сигнал «писать»: расширение увидит его на ближайшем опросе
+        # (GET /meeting/command) и САМО начнёт запись активной вкладки созвона.
+        c.extension_signal.want_record(chat_id)
+        await message.answer(
+            "🧩 Источник звука — <b>браузерное расширение</b>. Дал ему сигнал начать запись.\n"
+            "Откройте вкладку созвона в браузере с расширением — запись стартует сама "
+            "(в течение пары секунд). Остановит её тишина (~3 мин) или /meeting_stop."
+        )
+        return
     if chat_id in c.active_meetings:
         await message.answer("🔴 Уже пишу эту встречу. Остановить — /meeting_stop.")
         return
@@ -277,12 +288,13 @@ async def on_telemost_link(message: Message, c: AppContainer) -> None:
 _SOURCE_LABEL = {
     "telemost": "🌐 Подключение к Телемосту (бот сам входит в звонок)",
     "loopback": "🎧 Запись системного звука (машина уже в звонке)",
+    "extension": "🧩 Запись из браузерного расширения (звук вкладки созвона)",
 }
 
 
 @router.message(Command("meeting_source"))
 async def cmd_meeting_source(message: Message, c: AppContainer) -> None:
-    """`/meeting_source [telemost|loopback]` — показать/сменить источник звука встреч."""
+    """`/meeting_source [telemost|loopback|extension]` — показать/сменить источник звука."""
     parts = (message.text or "").split(maxsplit=1)
     chat_id = message.chat.id
     if len(parts) < 2 or not parts[1].strip():
@@ -292,24 +304,82 @@ async def cmd_meeting_source(message: Message, c: AppContainer) -> None:
             f"Сейчас: {_SOURCE_LABEL[current]}\n\n"
             "Сменить:\n"
             "• <code>/meeting_source telemost</code> — бот заходит в звонок по ссылке\n"
-            "• <code>/meeting_source loopback</code> — пишем системный звук машины"
+            "• <code>/meeting_source loopback</code> — пишем системный звук машины\n"
+            "• <code>/meeting_source extension</code> — звук шлёт браузерное расширение "
+            "(см. /meeting_capture)"
         )
         return
     value = parts[1].strip().lower()
     if not c.meeting_source.set(chat_id, value):
-        await message.answer("Не понял источник. Варианты: <code>telemost</code> или <code>loopback</code>.")
+        await message.answer(
+            "Не понял источник. Варианты: <code>telemost</code>, "
+            "<code>loopback</code> или <code>extension</code>."
+        )
         return
     await message.answer(f"✅ Источник звука встреч: {_SOURCE_LABEL[c.meeting_source.get(chat_id)]}")
 
 
+@router.message(Command("meeting_capture"))
+async def cmd_meeting_capture(message: Message, c: AppContainer) -> None:
+    """`/meeting_capture` — выдать конфиг для браузерного расширения (захват вкладки).
+
+    Расширение нужно знать, куда класть результат (chat_id), адрес API и токен.
+    Команда отдаёт готовый к копипасту JSON; заодно переключает чат на источник
+    `extension`.
+    """
+    chat_id = message.chat.id
+    c.meeting_source.set(chat_id, "extension")
+
+    api = c.settings.api
+    host = "localhost" if api.host in ("0.0.0.0", "") else api.host
+    api_base = f"http://{host}:{api.port}"
+    token = api.shared_secret
+
+    config = (
+        "{\n"
+        f'  "api_base": "{api_base}",\n'
+        f'  "chat_id": {chat_id},\n'
+        f'  "token": "{token}"\n'
+        "}"
+    )
+    text = (
+        "🧩 <b>Захват созвона из браузера</b>\n"
+        "Источник звука для этого чата переключён на <b>расширение</b>.\n\n"
+        "1. Поставьте расширение из папки <code>extension/</code> "
+        "(<code>chrome://extensions</code> → Режим разработчика → Загрузить распакованное).\n"
+        "2. Откройте настройки расширения и вставьте этот конфиг "
+        "(или впишите поля вручную):\n"
+        f"<pre>{esc(config)}</pre>\n"
+        "3. Дальше — автоматически: киньте в этот чат ссылку Телемоста, и расширение "
+        "САМО начнёт запись активной вкладки. Остановит её тишина (~3 мин) или "
+        "/meeting_stop.\n"
+        "Если браузер заблокирует автозапуск (значок ▶ на иконке) — нажмите в попапе "
+        "«Записать» один раз."
+    )
+    if not token:
+        text += (
+            "\n\n⚠️ <b>Токен пуст</b> — эндпоинт приёма аудио сейчас открыт без защиты. "
+            "Задайте <code>DIRIZHER_API__SHARED_SECRET</code> в <code>.env</code> и "
+            "перезапустите бота, затем повторите /meeting_capture."
+        )
+    await message.answer(text)
+
+
 @router.message(Command("meeting_stop"))
 async def cmd_meeting_stop(message: Message, c: AppContainer) -> None:
-    rec = c.active_meetings.get(message.chat.id)
-    if rec is None:
-        await message.answer("Сейчас запись встречи не идёт.")
+    chat_id = message.chat.id
+    rec = c.active_meetings.get(chat_id)
+    if rec is not None:
+        rec.stop("manual")  # обработку и ответ даст колбэк on_finish
+        await message.answer("⏹️ Останавливаю запись, обрабатываю…")
         return
-    rec.stop("manual")  # обработку и ответ даст колбэк on_finish
-    await message.answer("⏹️ Останавливаю запись, обрабатываю…")
+    # Режим расширения: своего рекордера у бота нет — гасим сигнал, расширение
+    # увидит «idle» на опросе, остановит запись и пришлёт её на /meeting/audio.
+    if c.meeting_source.get(chat_id) == "extension" and c.extension_signal.desired(chat_id) == "recording":
+        c.extension_signal.want_stop(chat_id)
+        await message.answer("⏹️ Дал расширению сигнал остановить запись — пришлю саммари, когда дойдёт аудио.")
+        return
+    await message.answer("Сейчас запись встречи не идёт.")
 
 
 # ── Регистрация голосового отпечатка ─────────────────────────────────────────

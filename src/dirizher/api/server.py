@@ -7,6 +7,9 @@
   POST /ingest/telegram          — n8n форвардит апдейт Telegram сюда
   POST /jobs/reminders           — cron: проверка дедлайнов и напоминания
   POST /jobs/evening-reconcile   — cron: вечерняя сверка отчётов
+  POST /meeting/audio            — приём аудио созвона из браузерного расширения
+  GET  /meeting/command          — расширение опрашивает: писать или стоять
+  GET  /meeting/audio/health     — пинг для расширения (проверка связи/токена)
   GET  /health                   — статус и режимы компонентов
 
 Защита: общий секрет в заголовке X-Dirizher-Token (если задан в .env).
@@ -14,9 +17,12 @@
 
 from __future__ import annotations
 
+import asyncio
+import tempfile
+from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, File, Form, Header, HTTPException, UploadFile
 
 from ..container import AppContainer
 from ..logging_setup import get_logger
@@ -90,5 +96,88 @@ def create_api(container: AppContainer) -> FastAPI:
         _auth(x_dirizher_token)
         chats = await run_evening_reconciliation(container)
         return {"chats_notified": chats}
+
+    @app.get("/meeting/audio/health")
+    async def meeting_audio_health(
+        x_dirizher_token: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        """Пинг для браузерного расширения: проверить связь и токен."""
+        _auth(x_dirizher_token)
+        return {
+            "status": "ok",
+            "bot_running": container.bot is not None,
+            "transcriber": container.transcriber.name,
+        }
+
+    @app.get("/meeting/command")
+    async def meeting_command(
+        chat_id: int,
+        x_dirizher_token: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        """Расширение опрашивает это раз в несколько секунд и реконсилирует:
+
+        - `desired == "recording"` и сейчас не пишет → стартовать захват вкладки;
+        - `desired == "idle"` и сейчас пишет → остановить и отправить запись.
+
+        Заодно отдаём пороги авто-стопа по тишине, чтобы клиент не хардкодил их.
+        """
+        _auth(x_dirizher_token)
+        audio = container.settings.audio
+        return {
+            "desired": container.extension_signal.desired(chat_id),
+            "silence_seconds": audio.meeting_silence_seconds,
+            "silence_rms": audio.meeting_silence_rms,
+        }
+
+    @app.post("/meeting/audio")
+    async def meeting_audio(
+        file: UploadFile = File(...),
+        chat_id: int = Form(...),
+        reason: str = Form("extension"),
+        x_dirizher_token: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        """Принять аудио созвона из браузерного расширения и прогнать его через
+        тот же конвейер, что и запись встречи (recorder → _process_recording).
+
+        Файл сохраняется во временный, перекодируется в WAV 16k моно и уходит в
+        обработку. HTTP-ответ не ждёт расшифровку: запускаем фоновой задачей.
+        """
+        _auth(x_dirizher_token)
+        if container.bot is None:
+            raise HTTPException(status_code=503, detail="bot not running")
+
+        from ..audio.ingest import to_wav16k_mono
+        from ..bot.handlers.meeting import _process_recording
+
+        # Запись пришла — гасим желаемое состояние, чтобы расширение не стартовало
+        # автозапись заново на следующем опросе.
+        container.extension_signal.want_stop(chat_id)
+
+        data = await file.read()
+        suffix = Path(file.filename or "audio.webm").suffix or ".webm"
+        with tempfile.NamedTemporaryFile(prefix="dirizher_ext_", suffix=suffix, delete=False) as tmp:
+            tmp.write(data)
+            raw_path = tmp.name
+
+        # Перекодировку (CPU-bound) и обработку уводим в фон, чтобы быстро
+        # ответить расширению. Исключения логируем — не теряем.
+        async def _run() -> None:
+            wav_path = raw_path
+            try:
+                wav_path = await asyncio.to_thread(to_wav16k_mono, raw_path)
+                await _process_recording(container, container.bot, chat_id, wav_path, reason)
+            except Exception:  # noqa: BLE001
+                log.exception("Сбой обработки аудио из расширения (chat_id=%s)", chat_id)
+            finally:
+                # Если перекодировали в отдельный файл — исходник больше не нужен.
+                # _process_recording сам удаляет переданный путь (wav_path).
+                if wav_path != raw_path:
+                    try:
+                        Path(raw_path).unlink(missing_ok=True)
+                    except Exception:  # noqa: BLE001
+                        pass
+
+        asyncio.create_task(_run())
+        return {"status": "processing", "bytes": len(data)}
 
     return app

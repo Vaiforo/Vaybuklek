@@ -48,13 +48,14 @@ class ModeStore:
 
 
 class MeetingSourceStore:
-    """Источник звука встреч на чат: `telemost` (бот входит сам) или `loopback`.
+    """Источник звука встреч на чат: `telemost` (бот входит сам), `loopback`
+    (системный звук машины) или `extension` (звук из браузерного расширения).
 
     Дефолт берётся из конфига (`DIRIZHER_AUDIO__MEETING_SOURCE`); командой
     /meeting_source значение переопределяется для конкретного чата.
     """
 
-    VALID = ("telemost", "loopback")
+    VALID = ("telemost", "loopback", "extension")
 
     def __init__(self, default: str = "telemost") -> None:
         self._default = default if default in self.VALID else "loopback"
@@ -69,6 +70,33 @@ class MeetingSourceStore:
             return False
         self._by_chat[chat_id] = value
         return True
+
+
+class ExtensionSignalStore:
+    """Желаемое состояние записи браузерного расширения на чат.
+
+    Бот не может «толкнуть» команду в расширение — расширение само опрашивает
+    `GET /meeting/command`. Здесь хранится, чего бот сейчас хочет от расширения:
+    `recording` (надо писать) или `idle` (надо стоять). Реконсиляцию делает само
+    расширение: видит `recording` и не пишет → стартует; видит `idle` и пишет →
+    останавливается.
+
+    - ссылка Телемоста в чате (режим extension) → want_record
+    - /meeting_stop → want_stop
+    - приём аудио на /meeting/audio → want_stop (чтобы не зациклить автозапуск)
+    """
+
+    def __init__(self) -> None:
+        self._state: dict[int, str] = {}
+
+    def want_record(self, chat_id: int) -> None:
+        self._state[chat_id] = "recording"
+
+    def want_stop(self, chat_id: int) -> None:
+        self._state[chat_id] = "idle"
+
+    def desired(self, chat_id: int) -> str:
+        return self._state.get(chat_id, "idle")
 
 
 class AppContainer:
@@ -129,6 +157,8 @@ class AppContainer:
         self.cabinet = PersonalCabinet(self.repo, self.team)
         self.mode = ModeStore(default_auto=False)
         self.meeting_source = MeetingSourceStore(default=s.audio.meeting_source_norm)
+        # Желаемое состояние записи расширения на чат (расширение опрашивает API).
+        self.extension_signal = ExtensionSignalStore()
         self.pending = PendingStore()
         self.history = ChatHistory()
 

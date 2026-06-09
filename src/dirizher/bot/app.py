@@ -17,6 +17,7 @@ log = get_logger("dirizher.bot")
 BOT_COMMANDS = [
     BotCommand(command="help", description="🎼 Основная справка"),
     BotCommand(command="help_meetings", description="🎙️ Встречи"),
+    BotCommand(command="meeting_capture", description="🧩 Захват созвона из браузера"),
     BotCommand(command="help_profile", description="👤 Личный кабинет"),
     BotCommand(command="help_kb", description="📚 База знаний"),
     BotCommand(command="help_admin", description="🧭 Администрирование"),

@@ -145,12 +145,14 @@ class AudioSettings(BaseSettings):
     hf_token: str = ""  # диаризация pyannote + нейро-эмбеддинги (только backend=local)
 
     # ── Встречи: источник звука ───────────────────────────────────────────────
-    # telemost — бот САМ заходит в звонок по ссылке (браузер Playwright) и пишет
-    #            его звук через loopback. Удобно, когда на машине никого нет.
-    # loopback — пишем системный звук машины, которая УЖЕ в звонке (без браузера).
+    # telemost  — бот САМ заходит в звонок по ссылке (браузер Playwright) и пишет
+    #             его звук через loopback. Удобно, когда на машине никого нет.
+    # loopback  — пишем системный звук машины, которая УЖЕ в звонке (без браузера).
+    # extension — звук приходит из браузерного расширения (захват вкладки созвона),
+    #             бот сам не пишет — только принимает аудио на /meeting/audio.
     # Значение глобальное по умолчанию; на чат переопределяется командой
     # /meeting_source. Неизвестное значение трактуется как loopback.
-    meeting_source: str = "telemost"  # telemost | loopback
+    meeting_source: str = "telemost"  # telemost | loopback | extension
     # Имя, под которым бот представляется в Телемосте при автоподключении.
     telemost_join_name: str = "Дирижёр 🤖"
     # Показывать окно браузера. False (видимый) надёжнее: звук звонка играет в
@@ -178,8 +180,15 @@ class AudioSettings(BaseSettings):
 
     @property
     def meeting_source_norm(self) -> str:
-        """Нормализованный источник звука встреч: `telemost` или `loopback`."""
-        return "telemost" if str(self.meeting_source).strip().lower() == "telemost" else "loopback"
+        """Нормализованный источник звука встреч: `telemost`, `loopback` или `extension`.
+
+        Явный разбор трёх значений; всё неизвестное — `loopback` (безопасный дефолт:
+        просто пишем системный звук машины).
+        """
+        value = str(self.meeting_source).strip().lower()
+        if value in ("telemost", "extension"):
+            return value
+        return "loopback"
 
     # ── Голосовые отпечатки (speaker embedding → авто-имя) ────────────────────
     # wespeaker-voxceleb-resnet34-LM — сильная нейромодель (ResNet34), её же

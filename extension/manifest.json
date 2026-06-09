@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Дирижёр — захват созвона",
+  "version": "0.1.0",
+  "description": "Записывает звук активной вкладки созвона (Телемост / Meet / Zoom-web) и отправляет боту Дирижёр для распознавания и постановки задач.",
+  "permissions": ["tabCapture", "activeTab", "tabs", "storage", "scripting", "offscreen", "alarms", "notifications"],
+  "host_permissions": [
+    "http://localhost:8080/*",
+    "http://127.0.0.1:8080/*",
+    "http://*/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Дирижёр — захват созвона"
+  },
+  "options_page": "options.html"
+}

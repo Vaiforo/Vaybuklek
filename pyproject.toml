@@ -13,6 +13,7 @@ dependencies = [
     "python-dateutil>=2.9",
     "fastapi>=0.111",
     "uvicorn>=0.30",
+    "python-multipart>=0.0.9",  # приём аудио из расширения (multipart /meeting/audio)
 ]
 
 [project.optional-dependencies]

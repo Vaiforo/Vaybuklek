@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from dirizher.config import AudioSettings
-from dirizher.container import MeetingSourceStore
+from dirizher.container import ExtensionSignalStore, MeetingSourceStore
 from dirizher.bot.handlers.meeting import has_telemost_link, telemost_link
 
 
@@ -18,6 +18,19 @@ def test_audio_meeting_source_norm_unknown_falls_back_to_loopback():
     assert AudioSettings(meeting_source="что-то").meeting_source_norm == "loopback"
     assert AudioSettings(meeting_source="LOOPBACK").meeting_source_norm == "loopback"
     assert AudioSettings(meeting_source="  Telemost ").meeting_source_norm == "telemost"
+
+
+def test_audio_meeting_source_norm_extension():
+    assert AudioSettings(meeting_source="extension").meeting_source_norm == "extension"
+    assert AudioSettings(meeting_source="  EXTENSION ").meeting_source_norm == "extension"
+
+
+def test_source_store_accepts_extension():
+    store = MeetingSourceStore(default="telemost")
+    assert store.set(7, "extension") is True
+    assert store.get(7) == "extension"
+    assert store.set(7, "EXTENSION") is True
+    assert store.get(7) == "extension"
 
 
 def test_source_store_default_and_override():
@@ -38,6 +51,16 @@ def test_source_store_rejects_garbage_and_normalizes_case():
 
 def test_source_store_invalid_default_falls_back():
     assert MeetingSourceStore(default="nonsense").get(99) == "loopback"
+
+
+def test_extension_signal_defaults_idle_and_toggles():
+    sig = ExtensionSignalStore()
+    assert sig.desired(1) == "idle"  # дефолт — стоять
+    sig.want_record(1)
+    assert sig.desired(1) == "recording"
+    sig.want_stop(1)
+    assert sig.desired(1) == "idle"
+    assert sig.desired(2) == "idle"  # другой чат не задет
 
 
 def test_telemost_link_extracted():

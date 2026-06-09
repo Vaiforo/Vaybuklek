@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Дирижёр</title>
+    <style>
+      body {
+        font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+        width: 260px;
+        margin: 0;
+        padding: 14px;
+        background: #fff;
+        color: #1c1c1e;
+      }
+      h1 { font-size: 15px; margin: 0 0 10px; }
+      .row { display: flex; gap: 8px; margin-bottom: 10px; }
+      button {
+        flex: 1;
+        padding: 9px 10px;
+        font-size: 14px;
+        border: 0;
+        border-radius: 8px;
+        cursor: pointer;
+      }
+      #rec { background: #e5352b; color: #fff; }
+      #stop { background: #efefef; color: #1c1c1e; }
+      button:disabled { opacity: 0.45; cursor: default; }
+      #status { font-size: 13px; color: #555; min-height: 18px; }
+      #timer { font-variant-numeric: tabular-nums; font-weight: 600; }
+      .dot { color: #e5352b; }
+      a { font-size: 12px; color: #2563eb; text-decoration: none; }
+    </style>
+  </head>
+  <body>
+    <h1>🎼 Дирижёр — захват созвона</h1>
+    <div class="row">
+      <button id="rec">● Записать</button>
+      <button id="stop" disabled>■ Стоп</button>
+    </div>
+    <div id="status">Готово к записи.</div>
+    <div style="margin-top:10px"><a id="opts" href="#">⚙️ Настройки (API, chat_id, токен)</a></div>
+    <script src="popup.js"></script>
+  </body>
+</html>
