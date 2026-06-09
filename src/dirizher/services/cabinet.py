@@ -17,6 +17,8 @@ from ..repository import TaskRepository, TeamRegistry
 from .gamification import rank_for, xp_breakdown_for_completion, is_on_time
 
 _TOKEN_RE = re.compile(r"[а-яёa-z0-9]+", re.IGNORECASE)
+DIVIDER = "━━━━━━━━━━━━━━"
+EMPTY = "—"
 
 
 def _now() -> datetime:
@@ -92,8 +94,30 @@ class PersonalCabinet:
         self._notes.setdefault(self.member_key(member_or_name), []).append(note)
         return note
 
-    def notes_for(self, member_or_name: TeamMember | str | None, limit: int = 8) -> list[PersonalNote]:
-        return self._notes.get(self.member_key(member_or_name), [])[-limit:]
+    def notes_for(self, member_or_name: TeamMember | str | None, limit: int | None = 8) -> list[PersonalNote]:
+        notes = self._notes.get(self.member_key(member_or_name), [])
+        return list(notes if limit is None else notes[-limit:])
+
+    def edit_note(self, member_or_name: TeamMember | str | None, note_id: int, text: str) -> PersonalNote | None:
+        notes = self._notes.get(self.member_key(member_or_name), [])
+        for note in notes:
+            if note.id == note_id:
+                note.text = text.strip()
+                return note
+        return None
+
+    def delete_note(self, member_or_name: TeamMember | str | None, note_id: int) -> PersonalNote | None:
+        notes = self._notes.get(self.member_key(member_or_name), [])
+        for i, note in enumerate(notes):
+            if note.id == note_id:
+                return notes.pop(i)
+        return None
+
+    def clear_notes(self, member_or_name: TeamMember | str | None) -> int:
+        key = self.member_key(member_or_name)
+        removed = len(self._notes.get(key, []))
+        self._notes[key] = []
+        return removed
 
     def record_report(self, member_or_name: TeamMember | str | None) -> None:
         key = self.member_key(member_or_name)
@@ -110,6 +134,32 @@ class PersonalCabinet:
         self._knowledge_seq += 1
         self._knowledge.append(item)
         return item
+
+    def get_knowledge(self, item_id: int) -> KnowledgeItem | None:
+        for item in self._knowledge:
+            if item.id == item_id:
+                return item
+        return None
+
+    def edit_knowledge(self, item_id: int, title: str, text: str, author: str) -> KnowledgeItem | None:
+        item = self.get_knowledge(item_id)
+        if item is None:
+            return None
+        item.title = title.strip()[:80] or item.title
+        item.text = text.strip()
+        item.author = author
+        return item
+
+    def delete_knowledge(self, item_id: int) -> KnowledgeItem | None:
+        for i, item in enumerate(self._knowledge):
+            if item.id == item_id:
+                return self._knowledge.pop(i)
+        return None
+
+    def clear_knowledge(self) -> int:
+        removed = len(self._knowledge)
+        self._knowledge.clear()
+        return removed
 
     def recent_knowledge(self, limit: int = 5) -> list[KnowledgeItem]:
         return self._knowledge[-limit:]
@@ -213,15 +263,20 @@ class PersonalCabinet:
     def render_profile(self, member: TeamMember) -> str:
         stats = self.stats_for(member)
         notes = self.notes_for(member, limit=3)
+        avg_cycle = f"{stats.avg_cycle_hours} ч" if stats.avg_cycle_hours is not None else EMPTY
         lines = [
             "👤 <b>Личный кабинет</b>",
+            DIVIDER,
             f"<b>{esc(member.full_name or member.mention())}</b>"
             + (f" · @{esc(member.username)}" if member.username else ""),
             "",
-            f"📋 Открыто: {stats.open} · ✅ Готово: {stats.done} · ▶️ В работе: {stats.in_progress}",
-            f"🔥 Просрочено: {stats.overdue} · ⭐ XP за закрытия: {stats.xp} · уровень {stats.level}",
-            f"⏱️ Средний цикл: {stats.avg_cycle_hours if stats.avg_cycle_hours is not None else '—'} ч",
-            f"🎯 В срок: {stats.on_time_rate}%",
+            "📊 <b>Задачи</b>",
+            f"• Открыто: <b>{stats.open}</b> · В работе: <b>{stats.in_progress}</b> · Готово: <b>{stats.done}</b>",
+            f"• Просрочено: <b>{stats.overdue}</b> · В срок: <b>{stats.on_time_rate}%</b>",
+            f"• Средний цикл: <b>{avg_cycle}</b>",
+            "",
+            "🎮 <b>Прогресс</b>",
+            f"• Уровень: <b>{stats.level}</b> · XP за закрытия: <b>{stats.xp}</b>",
             "",
             "🏅 <b>Ачивки</b>",
             *[f"• {esc(a)}" for a in stats.achievements[:5]],
@@ -235,16 +290,29 @@ class PersonalCabinet:
         notes = self.notes_for(member, limit=10)
         if not notes:
             return "🗒️ Заметок пока нет. Добавьте: <code>/note текст заметки</code>"
-        lines = ["🗒️ <b>Ваши заметки</b>", ""]
-        lines += [f"#{n.id} · {n.created_at.date().isoformat()} — {esc(n.text)}" for n in notes]
-        return "\n".join(lines)
+        lines = [
+            f"🗒️ <b>Ваши заметки</b> · {len(notes)}",
+            DIVIDER,
+            "✏️ <code>/note_edit ID текст</code> · 🗑️ <code>/note_del ID</code> · 🧹 <code>/notes_clear</code>",
+            "",
+        ]
+        for n in notes:
+            lines.append(f"<b>#{n.id}</b> · {n.created_at.date().isoformat()}")
+            lines.append(f"{esc(n.text)}")
+            lines.append("")
+        return "\n".join(lines).strip()
 
     def render_knowledge(self, items: list[KnowledgeItem]) -> str:
         if not items:
             return "📚 В базе знаний пока ничего не найдено. Добавьте: <code>/kb add Заголовок | текст</code>"
-        lines = ["📚 <b>База знаний команды</b>", ""]
+        lines = [
+            f"📚 <b>База знаний команды</b> · {len(items)}",
+            DIVIDER,
+            "✏️ <code>/kb edit ID Заголовок | текст</code> · 🗑️ <code>/kb del ID</code> · 🧹 <code>/kb clear</code>",
+            "",
+        ]
         for item in items:
-            lines.append(f"#{item.id} · <b>{esc(item.title)}</b>")
+            lines.append(f"<b>#{item.id} · {esc(item.title)}</b>")
             lines.append(f"{esc(item.text)}")
             lines.append(f"👤 {esc(item.author)} · {item.created_at.date().isoformat()}")
             lines.append("")

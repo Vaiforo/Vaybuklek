@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from html import escape as esc
 
 from ..domain.enums import TaskStatus
@@ -16,6 +17,11 @@ from ..services.task_service import Outcome, ProcessedTask
 DIVIDER = "━━━━━━━━━━━━━━"
 EMPTY = "—"
 MAX_BOARD_ITEMS_PER_STATUS = 12
+STATUS_EMOJI = {
+    TaskStatus.todo: "📋",
+    TaskStatus.in_progress: "▶️",
+    TaskStatus.done: "✅",
+}
 
 
 def _section(title: str) -> list[str]:
@@ -65,12 +71,25 @@ def render_processed(p: ProcessedTask) -> str:
     return render_task_card(p.task)
 
 
-def _render_card_line(card, *, include_deadline: bool = True) -> str:
-    who = f" · 👤 {esc(card.assignee)}" if card.assignee else ""
-    due = ""
-    if include_deadline and getattr(card, "deadline", None):
-        due = f" · 📅 {card.deadline.isoformat()}"
-    return f"  • {esc(card.title)}{who}{due}"
+def _render_card_lines(card, number: int) -> list[str]:
+    due = card.deadline.isoformat() if getattr(card, "deadline", None) else "без срока"
+    assignee = card.assignee or EMPTY
+    description = (getattr(card, "description", "") or "").strip()
+    title = esc(card.title)
+    if len(title) > 96:
+        title = title[:93] + "…"
+    lines = [
+        f"  <b>{number}. {title}</b>",
+        f"     🔸 <b>Статус:</b> {esc(card.status.label_ru)}",
+        f"     👤 <b>Исполнитель:</b> {esc(assignee)}",
+        f"     📅 <b>Дедлайн:</b> {esc(due)}",
+    ]
+    if description:
+        excerpt = description[:137] + "…" if len(description) > 140 else description
+        lines.append(f"     📝 <b>Детали:</b> {esc(excerpt)}")
+    if getattr(card, "id", None):
+        lines.append(f"     🆔 <code>{esc(card.id)}</code>")
+    return lines
 
 
 def render_board(cards) -> str:  # cards: list[BoardCard]
@@ -81,15 +100,25 @@ def render_board(cards) -> str:  # cards: list[BoardCard]
     for card in cards:
         buckets[card.status].append(card)
 
+    total = len(cards)
+    active = sum(1 for card in cards if card.status is not TaskStatus.done)
+    done = total - active
     lines = _section("🗂️ <b>Канбан-доска</b>")
+    lines.append(f"Всего: {total} · Активных: {active} · Готово: {done}")
+    lines.append("")
     for status in TaskStatus:
-        items = buckets[status]
-        lines.append(f"<b>{status.label_ru}</b> · {len(items)}")
+        items = sorted(
+            buckets[status],
+            key=lambda card: (getattr(card, "deadline", None) is None, getattr(card, "deadline", None) or date.max, card.title.lower()),
+        )
+        emoji = STATUS_EMOJI.get(status, "•")
+        lines.append(f"{emoji} <b>{status.label_ru}</b> · {len(items)}")
         if not items:
             lines.append(f"  {EMPTY} пусто")
         else:
-            for card in items[:MAX_BOARD_ITEMS_PER_STATUS]:
-                lines.append(_render_card_line(card))
+            for idx, card in enumerate(items[:MAX_BOARD_ITEMS_PER_STATUS], start=1):
+                lines.extend(_render_card_lines(card, idx))
+                lines.append("")
             hidden = len(items) - MAX_BOARD_ITEMS_PER_STATUS
             if hidden > 0:
                 lines.append(f"  … ещё {hidden}")
@@ -99,14 +128,17 @@ def render_board(cards) -> str:  # cards: list[BoardCard]
 
 def render_board_task(card) -> str:  # card: BoardCard
     """Карточка задачи с доски для интерактивного списка «мои задачи»."""
+    due = card.deadline.isoformat() if getattr(card, "deadline", None) else "без срока"
+    assignee = card.assignee or EMPTY
     lines = [
         f"📋 <b>{esc(card.title)}</b>",
-        f"🔸 Статус: {esc(card.status.label_ru)}",
+        DIVIDER,
+        f"🔸 <b>Статус:</b> {esc(card.status.label_ru)}",
+        f"👤 <b>Исполнитель:</b> {esc(assignee)}",
+        f"📅 <b>Дедлайн:</b> {esc(due)}",
     ]
-    if card.assignee:
-        lines.append(f"👤 {esc(card.assignee)}")
-    if getattr(card, "deadline", None):
-        lines.append(f"📅 {card.deadline.isoformat()}")
+    if getattr(card, "id", None):
+        lines.append(f"🆔 <code>{esc(card.id)}</code>")
     return "\n".join(lines)
 
 
@@ -123,14 +155,18 @@ def render_created(task: Task) -> str:
 
 def render_tasks(tasks: list[Task], *, title: str = "Ваши открытые задачи") -> str:
     if not tasks:
-        return f"🎉 <b>{esc(title)}</b>\nОткрытых задач нет. Можно выдохнуть."
+        return f"🎉 <b>{esc(title)}</b>\n{DIVIDER}\nОткрытых задач нет. Можно выдохнуть."
+    ordered = sorted(tasks, key=lambda t: (t.deadline is None, t.deadline or date.max, t.title.lower()))
     lines = _section(f"📋 <b>{esc(title)}</b>")
-    for task in tasks:
+    for idx, task in enumerate(ordered, start=1):
         marker = "🔥" if task.deadline and task.completed_at is None else "•"
-        lines.append(
-            f"{marker} <b>{esc(task.title)}</b>\n"
-            f"   {task.status.label_ru} · {esc(task.deadline_display())} · {task.priority.emoji}"
-        )
+        lines.extend([
+            f"{marker} <b>{idx}. {esc(task.title)}</b>",
+            f"   🔸 {esc(task.status.label_ru)} · {esc(task.priority.label_ru)} {task.priority.emoji}",
+            f"   📅 {esc(task.deadline_display())}",
+        ])
+        if task.assignee:
+            lines.append(f"   👤 {esc(task.assignee)}")
     return "\n".join(lines)
 
 
