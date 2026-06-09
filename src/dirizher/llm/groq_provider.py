@@ -12,7 +12,12 @@ from ..domain.models import ExtractedTask
 from ..logging_setup import get_logger
 from .base import ExtractionContext
 from .parsing import parse_tasks
-from .prompt import SYSTEM_PROMPT, build_user_prompt
+from .prompt import (
+    MEETING_SUMMARY_SYSTEM,
+    SYSTEM_PROMPT,
+    build_summary_prompt,
+    build_user_prompt,
+)
 
 log = get_logger("dirizher.llm.groq")
 
@@ -55,4 +60,30 @@ class GroqLLMProvider:
                 self._idx = (self._idx + 1) % n
                 continue
         # все ключи исчерпаны
+        raise last_err if last_err else RuntimeError("Groq: нет доступных ключей")
+
+    async def summarize_meeting(self, transcript_text: str) -> str:
+        """Краткое деловое саммари встречи по размеченному транскрипту."""
+        from groq import RateLimitError
+
+        messages = [
+            {"role": "system", "content": MEETING_SUMMARY_SYSTEM},
+            {"role": "user", "content": build_summary_prompt(transcript_text)},
+        ]
+        last_err: Exception | None = None
+        for _ in range(len(self._clients)):
+            client = self._clients[self._idx]
+            try:
+                resp = await client.chat.completions.create(
+                    model=self._model,
+                    temperature=0.2,
+                    messages=messages,
+                )
+                return (resp.choices[0].message.content or "").strip()
+            except RateLimitError as e:
+                last_err = e
+                n = len(self._clients)
+                log.warning("Groq ключ #%d/%d исчерпан (429) — переключаюсь", self._idx + 1, n)
+                self._idx = (self._idx + 1) % n
+                continue
         raise last_err if last_err else RuntimeError("Groq: нет доступных ключей")

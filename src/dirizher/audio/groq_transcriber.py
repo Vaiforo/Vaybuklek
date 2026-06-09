@@ -15,7 +15,7 @@ from pathlib import Path
 from importlib.util import find_spec
 
 from ..logging_setup import get_logger
-from .transcriber import TranscriptResult
+from .transcriber import Segment, TranscriptResult
 
 
 class FallbackRateLimitError(Exception):
@@ -61,13 +61,19 @@ class GroqWhisperTranscriber:
         for _ in range(len(self._clients)):
             client = self._clients[self._idx]
             try:
+                # verbose_json + посегментные таймкоды нужны для диаризации по
+                # голосу (разделение реплик участников встречи). Плоский текст
+                # без таймкодов разделить по говорящим невозможно.
                 resp = await client.audio.transcriptions.create(
                     file=(filename, data),
                     model=self._model,
                     language="ru",
+                    response_format="verbose_json",
+                    timestamp_granularities=["segment"],
                 )
                 text = (getattr(resp, "text", None) or "").strip()
-                return TranscriptResult(text=text, is_mock=False)
+                segments = _parse_segments(resp)
+                return TranscriptResult(text=text, segments=segments, is_mock=False)
             except RateLimitError as e:
                 last_err = e
                 n = len(self._clients)
@@ -75,3 +81,34 @@ class GroqWhisperTranscriber:
                 self._idx = (self._idx + 1) % n
                 continue
         raise last_err if last_err else RuntimeError("Groq Whisper: нет доступных ключей")
+
+
+def _parse_segments(resp) -> list[Segment]:
+    """Достать посегментную разметку из ответа Groq (verbose_json).
+
+    Сегменты могут прийти объектами или dict'ами (зависит от версии SDK), а на
+    старом плоском ответе/в тестах их нет — тогда возвращаем пустой список, и
+    диаризация по голосу просто не запустится.
+    """
+    raw = getattr(resp, "segments", None)
+    if not raw:
+        return []
+
+    def field(item, key):
+        return item.get(key) if isinstance(item, dict) else getattr(item, key, None)
+
+    out: list[Segment] = []
+    for item in raw:
+        text = (field(item, "text") or "").strip()
+        if not text:
+            continue
+        start, end = field(item, "start"), field(item, "end")
+        out.append(
+            Segment(
+                speaker="Speaker_1",
+                text=text,
+                start=float(start) if start is not None else None,
+                end=float(end) if end is not None else None,
+            )
+        )
+    return out

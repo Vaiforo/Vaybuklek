@@ -118,6 +118,81 @@ def test_pipeline_unknown_segment_inherits_previous(tmp_path):
     assert [s.speaker for s in segs] == ["Andrey", "Andrey"]
 
 
+def test_diarize_splits_speakers_without_registry():
+    """Без записанных голосов реплики всё равно делятся: Speaker_1/Speaker_2."""
+    from dirizher.audio.diarize import assign_speakers_by_voice
+    from dirizher.audio.transcriber import Segment
+
+    emb = FakeEmbedder({"0": [0.99, 0.02], "1": [0.02, 0.99], "2": [0.97, 0.05]})
+    segs = [Segment("Speaker_1", f"реплика {i}", start=i * 2.0, end=i * 2.0 + 2.0) for i in range(3)]
+    assert assign_speakers_by_voice("x.wav", segs, emb, registry=None) is True
+    # два разных голоса → два кластера; первый и третий — один и тот же говорящий
+    assert segs[0].speaker == segs[2].speaker
+    assert segs[0].speaker != segs[1].speaker
+    assert {s.speaker for s in segs} == {"Speaker_1", "Speaker_2"}
+
+
+def test_diarize_name_threshold_guards_false_match(tmp_path):
+    """Слабый матч (0.72 < score < 0.82) НЕ называется именем — остаётся Speaker_N.
+
+    Это и есть защита от бага «все реплики → единственный записанный голос»:
+    схлопнутый кластер не должен уверенно присваиваться записанному человеку.
+    """
+    from dirizher.audio.diarize import assign_speakers_by_voice
+    from dirizher.audio.transcriber import Segment
+
+    reg = _reg(tmp_path, Danya=[1.0, 0.0])  # порог реестра 0.8
+    # один кластер, средний вектор близок к Дане, но не настолько (cos≈0.78)
+    emb = FakeEmbedder({"0": [0.78, 0.626], "1": [0.78, 0.626]})
+    segs = [Segment("Speaker_1", f"р{i}", start=i * 2.0, end=i * 2.0 + 2.0) for i in range(2)]
+    assign_speakers_by_voice("x.wav", segs, emb, reg, name_threshold=0.82)
+    assert {s.speaker for s in segs} == {"Speaker_1"}  # имя не присвоено
+
+    # с мягким порогом тот же кластер уже называется Даней
+    segs2 = [Segment("Speaker_1", f"р{i}", start=i * 2.0, end=i * 2.0 + 2.0) for i in range(2)]
+    assign_speakers_by_voice("x.wav", segs2, emb, reg, name_threshold=0.7)
+    assert {s.speaker for s in segs2} == {"Danya"}
+
+
+def test_merge_raw_speakers_collapses_oversplit():
+    """pyannote пере-дробил одного на 3 метки → схлопываем по близости в одного."""
+    from dirizher.audio.diarize import _merge_raw_speakers
+
+    # SPEAKER_00/02/03 — один голос (близкие векторы), SPEAKER_01 — другой
+    emb = {
+        "SPEAKER_00": [0.99, 0.02],
+        "SPEAKER_01": [0.02, 0.99],
+        "SPEAKER_02": [0.98, 0.05],
+        "SPEAKER_03": [0.97, 0.06],
+    }
+    order = ["SPEAKER_00", "SPEAKER_01", "SPEAKER_02", "SPEAKER_03"]
+    groups = _merge_raw_speakers(order, emb, sim_threshold=0.80)
+    # должно получиться 2 группы: {00,02,03} и {01}
+    assert len(groups) == 2
+    sizes = sorted(len(g) for g in groups)
+    assert sizes == [1, 3]
+
+
+def test_pyannote_diarization_skipped_without_token():
+    """Без HF-токена pyannote-диаризация не запускается (вернёт False)."""
+    from dirizher.audio.diarize import assign_speakers_pyannote
+    from dirizher.audio.transcriber import Segment
+
+    segs = [Segment("Speaker_1", "раз", start=0.0, end=2.0)]
+    assert assign_speakers_pyannote("x.wav", segs, hf_token="") is False
+
+
+def test_diarize_noop_without_timestamps():
+    """Нет таймкодов (плоский текст) → диаризация невозможна, метки не меняем."""
+    from dirizher.audio.diarize import assign_speakers_by_voice
+    from dirizher.audio.transcriber import Segment
+
+    emb = FakeEmbedder({"0": [1.0, 0.0]})
+    segs = [Segment("Speaker_1", "раз"), Segment("Speaker_1", "два")]
+    assert assign_speakers_by_voice("x.wav", segs, emb) is False
+    assert [s.speaker for s in segs] == ["Speaker_1", "Speaker_1"]
+
+
 def test_can_identify_false_without_voices(tmp_path):
     empty = SpeakerRegistry(path=str(tmp_path / "vp.json"))
     pipe = WhisperPipeline(AudioSettings(enabled=True), speaker_registry=empty, embedder=FakeEmbedder({}))

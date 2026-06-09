@@ -130,6 +130,19 @@ class AudioSettings(BaseSettings):
     embedding_model: str = "pyannote/embedding"
     voiceprints_path: str = _data("voiceprints.json")
     voiceprint_threshold: float = 0.72
+    # Более строгий порог авто-именования спикеров НА ВСТРЕЧАХ: на смешанном
+    # loopback-потоке MFCC легко даёт ложный матч и вешает все реплики на один
+    # записанный голос. Ниже этого порога оставляем анонимный Speaker_N.
+    voiceprint_name_threshold: float = 0.82
+    # Косинус-близость, выше которой двух «спикеров» pyannote считаем одним
+    # человеком и схлопываем (лечит пере-сегментацию: 6 меток на 3 человек).
+    # Ниже → агрессивнее объединяет (риск склеить разных), выше → меньше слияний.
+    speaker_merge_similarity: float = 0.70
+    # Косинус-близость, выше которой двух «спикеров» pyannote считаем одним
+    # человеком и схлопываем (лечит пере-сегментацию на loopback). Понизь
+    # (напр. 0.70), если один человек дробится на несколько Speaker_N; повысь,
+    # если разных людей склеивает в одного.
+    voiceprint_merge_threshold: float = 0.80
 
     @property
     def groq_key_list(self) -> list[str]:

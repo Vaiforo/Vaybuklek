@@ -41,14 +41,20 @@ class PyannoteEmbedder:
         if self._inference is None:
             from pyannote.audio import Inference, Model
 
+            from .pyannote_compat import load_pretrained
+
             log.info("Загружаю модель эмбеддингов %s…", self._cfg.embedding_model)
-            model = Model.from_pretrained(self._cfg.embedding_model, use_auth_token=self._cfg.hf_token)
+            model = load_pretrained(
+                Model.from_pretrained, self._cfg.embedding_model, self._cfg.hf_token
+            )
             self._inference = Inference(model, window="whole")
         return self._inference
 
     def embed_file(self, wav_path: str) -> list[float]:
         """Эмбеддинг всей записи (для регистрации голоса одного человека)."""
-        emb = self._ensure()(wav_path)
+        from .pyannote_compat import to_pyannote_audio
+
+        emb = self._ensure()(to_pyannote_audio(wav_path))
         return _to_list(emb)
 
     def embed_turns(
@@ -57,13 +63,16 @@ class PyannoteEmbedder:
         """Усреднённый эмбеддинг по сегментам каждого спикера диаризации."""
         from pyannote.core import Segment
 
+        from .pyannote_compat import to_pyannote_audio
+
         inf = self._ensure()
+        audio = to_pyannote_audio(wav_path)  # грузим один раз, в обход torchcodec
         by_speaker: dict[str, list[list[float]]] = {}
         for start, end, speaker in turns:
             if end - start < 0.4:  # слишком короткие куски пропускаем
                 continue
             try:
-                emb = inf.crop(wav_path, Segment(start, end))
+                emb = inf.crop(audio, Segment(start, end))
             except Exception:  # noqa: BLE001
                 continue
             by_speaker.setdefault(speaker, []).append(_to_list(emb))

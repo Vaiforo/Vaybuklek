@@ -8,7 +8,12 @@ from ..domain.models import ExtractedTask
 from ..logging_setup import get_logger
 from .base import ExtractionContext
 from .parsing import parse_tasks
-from .prompt import SYSTEM_PROMPT, build_user_prompt
+from .prompt import (
+    MEETING_SUMMARY_SYSTEM,
+    SYSTEM_PROMPT,
+    build_summary_prompt,
+    build_user_prompt,
+)
 
 log = get_logger("dirizher.llm.gigachat")
 
@@ -38,3 +43,17 @@ class GigaChatLLMProvider:
         resp = await asyncio.to_thread(self._client.chat, chat)
         raw = resp.choices[0].message.content or ""
         return parse_tasks(raw)
+
+    async def summarize_meeting(self, transcript_text: str) -> str:
+        """Краткое деловое саммари встречи по размеченному транскрипту."""
+        from gigachat.models import Chat, Messages, MessagesRole
+
+        chat = Chat(
+            messages=[
+                Messages(role=MessagesRole.SYSTEM, content=MEETING_SUMMARY_SYSTEM),
+                Messages(role=MessagesRole.USER, content=build_summary_prompt(transcript_text)),
+            ],
+            temperature=0.2,
+        )
+        resp = await asyncio.to_thread(self._client.chat, chat)
+        return (resp.choices[0].message.content or "").strip()

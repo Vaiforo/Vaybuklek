@@ -40,6 +40,53 @@ def has_telemost_link(text: str) -> bool:
     return bool(_TELEMOST_RE.search(text or ""))
 
 
+def _diarize_segments(c: AppContainer, path: str, segments: list) -> None:
+    """Синхронно разметить говорящих: сначала pyannote (если есть HF-токен),
+
+    иначе — MFCC-кластеризация со строгим порогом именования. Выполняется в
+    отдельном потоке (модели тяжёлые/синхронные).
+    """
+    from ...audio.diarize import assign_speakers_by_voice, assign_speakers_pyannote
+
+    audio = c.settings.audio
+    if assign_speakers_pyannote(
+        path,
+        segments,
+        audio.hf_token,
+        embedder=c.embedder,
+        registry=c.speakers,
+        name_threshold=audio.voiceprint_name_threshold,
+        merge_threshold=audio.speaker_merge_similarity,
+    ):
+        return
+    assign_speakers_by_voice(
+        path,
+        segments,
+        c.embedder,
+        c.speakers,
+        name_threshold=audio.voiceprint_name_threshold,
+    )
+
+
+async def _diarize_meeting(c: AppContainer, path: str, transcript) -> None:
+    """Проставить говорящих сегментам встречи.
+
+    Запускаем, только если транскрайбер сам не разделил спикеров (облачный путь):
+    если в сегментах уже больше одного говорящего — значит локальный pyannote их
+    разметил, не трогаем.
+    """
+    if not getattr(transcript, "segments", None):
+        return
+    if c.embedder is None and not c.settings.audio.hf_token:
+        return
+    if len({s.speaker for s in transcript.segments}) > 1:
+        return
+    try:
+        await asyncio.to_thread(_diarize_segments, c, path, transcript.segments)
+    except Exception:  # noqa: BLE001
+        log.exception("Диаризация встречи пропущена")
+
+
 async def _process_recording(c: AppContainer, bot, chat_id: int, path: str | None, reason: str) -> None:
     """Колбэк по завершении записи: распознать, выделить задачи, отчитаться."""
     c.active_meetings.pop(chat_id, None)
@@ -50,6 +97,10 @@ async def _process_recording(c: AppContainer, bot, chat_id: int, path: str | Non
     await bot.send_message(chat_id, f"⏹️ Запись остановлена ({why}). Распознаю встречу…")
     try:
         transcript = await c.transcriber.transcribe(path)
+        # Разделяем реплики по голосу прямо на записи встречи (пока файл жив).
+        # Облачный Groq отдаёт сегменты без говорящих — кластеризуем их сами;
+        # делаем это только для встреч, личные ГС остаются без меток спикеров.
+        await _diarize_meeting(c, path, transcript)
     except Exception as e:  # noqa: BLE001
         log.exception("Сбой распознавания встречи")
         await bot.send_message(chat_id, f"Не смог распознать встречу 😕\n<code>{esc(str(e))}</code>")

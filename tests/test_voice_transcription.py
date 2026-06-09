@@ -92,6 +92,41 @@ async def test_groq_transcribe_happy_path(tmp_path):
     assert res.is_mock is False
 
 
+class _VerboseResp:
+    """Ответ Groq в формате verbose_json: текст + посегментные таймкоды."""
+
+    def __init__(self, text: str, segments: list[dict]) -> None:
+        self.text = text
+        self.segments = segments
+
+
+async def test_groq_transcribe_returns_timed_segments(tmp_path):
+    """verbose_json → сегменты с таймкодами (нужны диаризации по голосу)."""
+    resp = _VerboseResp(
+        "привет всем готов отчёт",
+        [
+            {"start": 0.0, "end": 1.5, "text": " привет всем"},
+            {"start": 1.5, "end": 3.0, "text": "готов отчёт"},
+            {"start": 3.0, "end": 3.1, "text": "   "},  # пустой — отбрасываем
+        ],
+    )
+    t = GroqWhisperTranscriber(["k1"], "m")
+    client = _FakeClient()
+    client.audio.transcriptions._resp = resp  # подменяем ответ create()
+
+    async def _create(**_kw):
+        client.audio.transcriptions.calls += 1
+        return resp
+
+    client.audio.transcriptions.create = _create
+    t._clients = [client]
+
+    res = await t.transcribe(_make(tmp_path))
+    assert [s.text for s in res.segments] == ["привет всем", "готов отчёт"]
+    assert res.segments[0].start == 0.0 and res.segments[1].end == 3.0
+    assert all(s.speaker == "Speaker_1" for s in res.segments)
+
+
 def test_join_consecutive_groups_by_speaker():
     from dirizher.audio.pipeline import WhisperPipeline
     from dirizher.audio.transcriber import Segment

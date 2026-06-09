@@ -48,8 +48,25 @@ class MeetingService:
             lines.append(f"{who}: {seg.text}")
         return "\n".join(lines) if lines else transcript.text
 
+    async def _summarize(self, text: str) -> str:
+        """Саммари встречи: LLM, если провайдер умеет, иначе эвристика.
+
+        Боевые провайдеры (Groq/GigaChat) дают связное деловое саммари
+        («участники / обсудили / договорились»); mock и сбой LLM откатываются на
+        детерминированную эвристику по ключевым словам.
+        """
+        provider = getattr(self.service, "provider", None)
+        if provider is not None and hasattr(provider, "summarize_meeting"):
+            try:
+                out = (await provider.summarize_meeting(text) or "").strip()
+                if out:
+                    return out
+            except Exception as e:  # noqa: BLE001
+                log.warning("LLM-саммари встречи недоступно (%s) — использую эвристику", e)
+        return self._summarize_heuristic(text)
+
     @staticmethod
-    def _summarize(text: str, max_points: int = 6) -> str:
+    def _summarize_heuristic(text: str, max_points: int = 6) -> str:
         """Краткое саммари: договорённости/задачи с указанием, кто их озвучил.
 
         На вход — размеченный текст («@user: реплика» построчно). Для каждой
@@ -82,7 +99,7 @@ class MeetingService:
         self, transcript: TranscriptResult, *, chat_id: int | None = None, today: date | None = None
     ) -> MeetingResult:
         text = self._label_speakers(transcript)
-        summary = self._summarize(text)
+        summary = await self._summarize(text)
         source = SourceRef(source=TaskSource.meeting, chat_id=chat_id, excerpt=text[:200])
         processed = await self.service.ingest(text, source, today=today)
         log.info("Встреча обработана: задач=%d", len(processed))

@@ -20,6 +20,10 @@ log = get_logger("dirizher.audio")
 class Segment:
     speaker: str
     text: str
+    # Таймкоды (секунды) — нужны диаризации по голосу. None, если транскрайбер
+    # не отдаёт временную разметку (тогда разделить реплики по голосу нельзя).
+    start: float | None = None
+    end: float | None = None
 
 
 @dataclass

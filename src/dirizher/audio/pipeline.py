@@ -96,9 +96,13 @@ class WhisperPipeline:
             try:
                 from pyannote.audio import Pipeline
 
+                from .pyannote_compat import load_pretrained
+
                 log.info("Загружаю pyannote 3.1 (диаризация)…")
-                self._diarizer = Pipeline.from_pretrained(
-                    "pyannote/speaker-diarization-3.1", use_auth_token=self._cfg.hf_token
+                self._diarizer = load_pretrained(
+                    Pipeline.from_pretrained,
+                    "pyannote/speaker-diarization-3.1",
+                    self._cfg.hf_token,
                 )
             except Exception as e:  # noqa: BLE001
                 log.warning("Диаризация недоступна (%s) — продолжаю без неё", e)
@@ -164,11 +168,9 @@ class WhisperPipeline:
         if diarizer is None:
             return None
         try:
-            annotation = diarizer(file_path)
-            turns = []
-            for turn, _track, speaker in annotation.itertracks(yield_label=True):
-                turns.append((turn.start, turn.end, speaker))
-            return turns
+            from .pyannote_compat import diarization_turns, to_pyannote_audio
+
+            return diarization_turns(diarizer(to_pyannote_audio(file_path)))
         except Exception as e:  # noqa: BLE001
             log.warning("Диаризация пропущена (%s)", e)
             return None
@@ -186,37 +188,31 @@ class WhisperPipeline:
     def _resolve_speakers(self, wav_path: str, turns: list) -> dict[str, str]:
         """Сырые метки pyannote → имена. По голосу (эмбеддинг+реестр) или Speaker_N.
 
-        Порядок появления сохраняем, чтобы нумерация была стабильной и читаемой.
+        Схлопывает пере-сегментированных спикеров и называет группы — общая логика
+        с облачным путём (diarize.name_raw_speakers).
         """
+        from .diarize import name_raw_speakers
+
         raw_order: list[str] = []
         for _start, _end, spk in turns:
             if spk not in raw_order:
                 raw_order.append(spk)
 
-        # Эмбеддинги по спикерам (если есть эмбеддер и токен) → имя из реестра.
+        # Эмбеддинги по спикерам (если есть эмбеддер) → имя из реестра + схлопывание.
         embeddings: dict[str, list[float]] = {}
-        if self._embedder is not None and self._registry is not None:
+        if self._embedder is not None:
             try:
                 embeddings = self._embedder.embed_turns(wav_path, turns)
             except Exception as e:  # noqa: BLE001
                 log.warning("Эмбеддинги спикеров недоступны (%s)", e)
 
-        label_map: dict[str, str] = {}
-        used_names: set[str] = set()
-        anon = 0
-        for raw in raw_order:
-            name = None
-            emb = embeddings.get(raw)
-            if emb is not None:
-                cand = self._registry.identify(emb)
-                if cand and cand not in used_names:  # один человек — один спикер
-                    name = cand
-            if name is None:
-                anon += 1
-                name = f"Speaker_{anon}"
-            used_names.add(name)
-            label_map[raw] = name
-        return label_map
+        return name_raw_speakers(
+            raw_order,
+            embeddings,
+            self._registry,
+            self._cfg.voiceprint_name_threshold,
+            merge_threshold=self._cfg.speaker_merge_similarity,
+        )
 
     # ── идентификация без диаризации (closed-set по реестру голосов) ──────────
     def _can_identify(self) -> bool:
@@ -226,92 +222,13 @@ class WhisperPipeline:
     def _identify_segments(self, wav_path: str, segments: list) -> None:
         """Разметить сегменты именами говорящих через кластеризацию голосов.
 
-        MFCC на коротких сегментах слишком шумный, чтобы решать по каждому
-        отдельно (то расщепляет один голос, то склеивает два). Поэтому:
-        1) кластеризуем эмбеддинги сегментов по похожести голоса
-           (агломеративно, порог = по близости реестра) — это и есть «кто-когда»;
-        2) реестр голосов используем лишь чтобы НАЗВАТЬ кластеры (средний
-           эмбеддинг кластера → ближайший зарегистрированный → имя).
-        Так один голос = один кластер (а если распался — оба назовутся одним
-        именем), двое разных = два кластера. Незаписанные куски наследуют соседа.
+        Делегирует общему модулю diarize (та же логика используется и на облачном
+        Groq-пути): кластеризуем эмбеддинги сегментов по голосу и называем кластеры
+        по реестру (или Speaker_N).
         """
-        turns = [(s.start, s.end, str(i)) for i, s in enumerate(segments)]
-        try:
-            embs = self._embedder.embed_turns(wav_path, turns)
-        except Exception as e:  # noqa: BLE001
-            log.warning("Идентификация спикеров пропущена (%s)", e)
-            return
-        idxs = [i for i in range(len(segments)) if str(i) in embs]
-        if not idxs:
-            return
-        vecs = [embs[str(i)] for i in idxs]
-        labels = self._cluster(vecs)
+        from .diarize import assign_speakers_by_voice
 
-        # Назвать каждый кластер по среднему эмбеддингу (или Speaker_N, если чужой).
-        cluster_name: dict[int, str] = {}
-        anon = 0
-        for cid in sorted(set(labels)):
-            members = [vecs[j] for j, lab in enumerate(labels) if lab == cid]
-            name = self._registry.identify(self._mean_vec(members))
-            if name is None:
-                anon += 1
-                name = f"Speaker_{anon}"
-            cluster_name[cid] = name
-
-        seg_name = {i: cluster_name[labels[j]] for j, i in enumerate(idxs)}
-        last = next(iter(cluster_name.values()))
-        for i, s in enumerate(segments):
-            s.speaker = seg_name.get(i, last)
-            last = s.speaker
-
-    def _cluster(self, vecs: list[list[float]]) -> list[int]:
-        """Агломеративная кластеризация эмбеддингов по косинусу.
-
-        Порог среза берём от близости реестра: голоса ближе порога считаем одним
-        говорящим. Если все сегменты похожи — выйдет один кластер.
-        """
-        if len(vecs) == 1:
-            return [0]
-
-        cut = max(0.05, 1.0 - self._registry.threshold)  # косинус-дистанция среза
-        clusters: list[list[int]] = [[i] for i in range(len(vecs))]
-
-        def cosine_distance(a: list[float], b: list[float]) -> float:
-            import math
-
-            dot = sum(x * y for x, y in zip(a, b))
-            na = math.sqrt(sum(x * x for x in a))
-            nb = math.sqrt(sum(y * y for y in b))
-            return 1.0 - (dot / (na * nb)) if na and nb else 1.0
-
-        def average_distance(left: list[int], right: list[int]) -> float:
-            pairs = [cosine_distance(vecs[i], vecs[j]) for i in left for j in right]
-            return sum(pairs) / len(pairs)
-
-        while len(clusters) > 1:
-            best: tuple[float, int, int] | None = None
-            for i in range(len(clusters)):
-                for j in range(i + 1, len(clusters)):
-                    dist = average_distance(clusters[i], clusters[j])
-                    if best is None or dist < best[0]:
-                        best = (dist, i, j)
-            if best is None or best[0] > cut:
-                break
-            _dist, i, j = best
-            clusters[i].extend(clusters[j])
-            del clusters[j]
-
-        labels = [0] * len(vecs)
-        for cid, members in enumerate(clusters):
-            for i in members:
-                labels[i] = cid
-        return labels
-
-    @staticmethod
-    def _mean_vec(vectors: list[list[float]]) -> list[float]:
-        n = len(vectors)
-        length = len(vectors[0])
-        return [sum(v[k] for v in vectors) / n for k in range(length)]
+        assign_speakers_by_voice(wav_path, segments, self._embedder, self._registry)
 
     @staticmethod
     def _join_consecutive(segments: list) -> str:
