@@ -15,24 +15,23 @@ log = get_logger("dirizher.bot")
 
 # Меню команд (выпадает при вводе «/» в Telegram) — для удобной навигации.
 BOT_COMMANDS = [
-    BotCommand(command="help", description="🎼 Справка и возможности"),
-    BotCommand(command="tasks", description="📋 Мои открытые задачи"),
+    BotCommand(command="help", description="🎼 Основная справка"),
+    BotCommand(command="help_meetings", description="🎙️ Встречи"),
+    BotCommand(command="help_profile", description="👤 Личный кабинет"),
+    BotCommand(command="help_kb", description="📚 База знаний"),
+    BotCommand(command="help_admin", description="🧭 Администрирование"),
+    BotCommand(command="tasks", description="📋 Мои задачи или /tasks @user"),
     BotCommand(command="board", description="🗂️ Канбан-доска"),
     BotCommand(command="mode", description="⚙️ Режим: auto / manual"),
     BotCommand(command="report", description="🌙 Вечерний отчёт"),
     BotCommand(command="remind", description="⏰ Проверить дедлайны"),
     BotCommand(command="sync", description="🔄 Сверить память с доской"),
     BotCommand(command="profile", description="👤 Профиль, XP и метрики"),
-    BotCommand(command="leaderboard", description="🏆 Рейтинг команды"),
-    BotCommand(command="notes", description="🗒️ Мои заметки"),
-    BotCommand(command="note", description="🗒️ Добавить заметку"),
     BotCommand(command="kb", description="📚 База знаний"),
-    BotCommand(command="join", description="👋 Представиться боту"),
-    BotCommand(command="alias", description="🏷️ Мои прозвища (для тёзок)"),
-    BotCommand(command="whoami", description="🪞 Как я вас вижу"),
+    BotCommand(command="team_create", description="👥 Создать команду"),
+    BotCommand(command="team_add_member", description="👤 Добавить подчинённого"),
+    BotCommand(command="team_add_manager", description="🧭 Назначить руководителя команды"),
     BotCommand(command="no_team_manager", description="🧭 Руководитель без команды"),
-    BotCommand(command="enroll_voice", description="🎙️ Запомнить мой голос"),
-    BotCommand(command="meeting_stop", description="⏹️ Остановить запись встречи"),
 ]
 
 

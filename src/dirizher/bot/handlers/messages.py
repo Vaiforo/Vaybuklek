@@ -180,8 +180,12 @@ async def on_text(message: Message, c: AppContainer, state: FSMContext) -> None:
         excerpt=text[:200],
     )
     history = c.history.recent(chat_id, limit=10)
-    processed = await c.service.ingest(text, source, history=history, sender=member)
-    processed = [p for p in processed if can_create_task(member, p.task, c.team)]
+    extracted_tasks = await c.service.ingest(text, source, history=history, sender=member)
+    processed = [p for p in extracted_tasks if can_create_task(member, p.task, c.team)]
+    # Если задача распознана, но автор не имеет права её создавать, молчим: это
+    # не ошибка формулировки, а запрет для обычного пользователя.
+    if extracted_tasks and not processed:
+        return
 
     if processed:
         await present(message.bot, c, processed, chat_id)
