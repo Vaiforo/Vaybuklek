@@ -20,6 +20,7 @@ BOT_COMMANDS = [
     BotCommand(command="help_profile", description="👤 Личный кабинет"),
     BotCommand(command="help_kb", description="📚 База знаний"),
     BotCommand(command="help_admin", description="🧭 Администрирование"),
+    BotCommand(command="settings", description="⚙️ Настройки уведомлений"),
     BotCommand(command="tasks", description="📋 Мои задачи или /tasks @user"),
     BotCommand(command="board", description="🗂️ Канбан-доска"),
     BotCommand(command="mode", description="⚙️ Режим: auto / manual"),
@@ -31,7 +32,10 @@ BOT_COMMANDS = [
     BotCommand(command="team_create", description="👥 Создать команду"),
     BotCommand(command="team_add_member", description="👤 Добавить подчинённого"),
     BotCommand(command="team_add_manager", description="🧭 Назначить руководителя команды"),
+    BotCommand(command="team_del_manager", description="🧭 Снять руководителя команды"),
+    BotCommand(command="team_del_member", description="👤 Удалить из команды"),
     BotCommand(command="no_team_manager", description="🧭 Руководитель без команды"),
+    BotCommand(command="del_manager", description="🧭 Снять руководителя без команды"),
 ]
 
 
