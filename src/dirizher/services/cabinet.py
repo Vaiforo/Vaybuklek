@@ -46,6 +46,8 @@ class KnowledgeItem:
     title: str
     text: str
     author: str
+    author_user_id: int | None = None
+    team_id: str | None = None
     created_at: datetime = field(default_factory=_now)
 
 
@@ -124,12 +126,16 @@ class PersonalCabinet:
         if key:
             self._reports[key] = self._reports.get(key, 0) + 1
 
-    def add_knowledge(self, title: str, text: str, author: str) -> KnowledgeItem:
+    def add_knowledge(
+        self, title: str, text: str, author: str, *, author_user_id: int | None = None, team_id: str | None = None
+    ) -> KnowledgeItem:
         item = KnowledgeItem(
             id=self._knowledge_seq,
             title=title.strip()[:80] or "Заметка команды",
             text=text.strip(),
             author=author,
+            author_user_id=author_user_id,
+            team_id=team_id,
         )
         self._knowledge_seq += 1
         self._knowledge.append(item)
@@ -141,13 +147,14 @@ class PersonalCabinet:
                 return item
         return None
 
-    def edit_knowledge(self, item_id: int, title: str, text: str, author: str) -> KnowledgeItem | None:
+    def edit_knowledge(self, item_id: int, title: str, text: str, author: str | None = None) -> KnowledgeItem | None:
         item = self.get_knowledge(item_id)
         if item is None:
             return None
         item.title = title.strip()[:80] or item.title
         item.text = text.strip()
-        item.author = author
+        if author is not None:
+            item.author = author
         return item
 
     def delete_knowledge(self, item_id: int) -> KnowledgeItem | None:

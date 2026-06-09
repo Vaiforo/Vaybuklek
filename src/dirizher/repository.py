@@ -7,9 +7,19 @@
 from __future__ import annotations
 
 from datetime import date
+import re
 
 from .domain.enums import TaskStatus
-from .domain.models import Task, TeamMember
+from .domain.models import Task, Team, TeamMember
+
+_ASSIGNEE_SPLIT = re.compile(r"\s*(?:,|;|/|&|\bи\b|\band\b)\s*", re.IGNORECASE)
+
+
+def _assignee_keys(value: str | None) -> set[str]:
+    if not value:
+        return set()
+    parts = [p.lstrip("@").strip().lower() for p in _ASSIGNEE_SPLIT.split(value) if p.strip()]
+    return set(parts or [value.lstrip("@").strip().lower()])
 
 
 class TaskRepository:
@@ -35,14 +45,20 @@ class TaskRepository:
     def all(self) -> list[Task]:
         return list(self._tasks.values())
 
+    def active(self) -> list[Task]:
+        return [t for t in self._tasks.values() if t.trashed_at is None]
+
+    def trashed(self) -> list[Task]:
+        return [t for t in self._tasks.values() if t.trashed_at is not None]
+
     def open(self) -> list[Task]:
-        return [t for t in self._tasks.values() if t.status != TaskStatus.done]
+        return [t for t in self._tasks.values() if t.trashed_at is None and t.status != TaskStatus.done]
 
     def by_assignee(self, name: str) -> list[Task]:
-        key = name.lstrip("@").lower()
+        key = name.lstrip("@").strip().lower()
         return [
             t for t in self._tasks.values()
-            if t.assignee and t.assignee.lstrip("@").lower() == key
+            if t.trashed_at is None and key and key in _assignee_keys(t.assignee)
         ]
 
     def open_by_assignee(self, name: str) -> list[Task]:
@@ -51,8 +67,13 @@ class TaskRepository:
     def due_on_or_before(self, day: date) -> list[Task]:
         return [
             t for t in self._tasks.values()
-            if t.deadline and t.deadline <= day and t.status != TaskStatus.done
+            if t.trashed_at is None and t.deadline and t.deadline <= day and t.status != TaskStatus.done
         ]
+
+    def clear(self) -> int:
+        n = len(self._tasks)
+        self._tasks.clear()
+        return n
 
     def remove(self, task_id: str) -> None:
         self._tasks.pop(task_id, None)
@@ -64,6 +85,7 @@ class TeamRegistry:
     def __init__(self) -> None:
         self._by_id: dict[int, TeamMember] = {}
         self._anon: list[TeamMember] = []  # без user_id (упомянуты, но не в чате)
+        self._teams: dict[str, Team] = {}
 
     def register(self, member: TeamMember) -> TeamMember:
         if member.user_id is not None:
@@ -74,6 +96,13 @@ class TeamRegistry:
                 existing.email = member.email or existing.email
                 existing.yougile_id = member.yougile_id or existing.yougile_id
                 existing.dm_chat_id = member.dm_chat_id or existing.dm_chat_id
+                existing.is_superuser = member.is_superuser or existing.is_superuser
+                for tid in member.leader_team_ids:
+                    if tid not in existing.leader_team_ids:
+                        existing.leader_team_ids.append(tid)
+                for tid in member.member_team_ids:
+                    if tid not in existing.member_team_ids:
+                        existing.member_team_ids.append(tid)
                 for a in member.aliases:
                     if a not in existing.aliases:
                         existing.aliases.append(a)
@@ -86,12 +115,72 @@ class TeamRegistry:
     def knows(self, user_id: int | None) -> bool:
         return user_id is not None and user_id in self._by_id
 
-    def clear(self) -> int:
-        """Забыть всех участников (имена, алиасы, email, привязки к доске)."""
-        n = len(self._by_id) + len(self._anon)
-        self._by_id.clear()
+    def clear(self, *, keep_superusers: bool = True, clear_teams: bool = False) -> int:
+        """Забыть участников; по умолчанию сохраняем суперюзеров, чтобы бот не осиротел."""
+        before = len(self._by_id) + len(self._anon)
+        if keep_superusers:
+            self._by_id = {uid: m for uid, m in self._by_id.items() if m.is_superuser}
+        else:
+            self._by_id.clear()
         self._anon.clear()
-        return n
+        if clear_teams:
+            self._teams.clear()
+            for member in self._by_id.values():
+                member.leader_team_ids.clear()
+                member.member_team_ids.clear()
+        else:
+            for t in self._teams.values():
+                t.manager_user_ids = [uid for uid in t.manager_user_ids if uid in self._by_id]
+                t.member_user_ids = [uid for uid in t.member_user_ids if uid in self._by_id]
+        return before - (len(self._by_id) + len(self._anon))
+
+    def superuser_exists(self) -> bool:
+        return any(m.is_superuser for m in self._by_id.values())
+
+    def make_superuser_once(self, member: TeamMember) -> bool:
+        saved = self.register(member)
+        if self.superuser_exists():
+            return False
+        saved.is_superuser = True
+        return True
+
+    def grant_superuser(self, member: TeamMember) -> TeamMember:
+        saved = self.register(member)
+        saved.is_superuser = True
+        return saved
+
+    def add_team(self, team: Team) -> Team:
+        self._teams[team.id] = team
+        return team
+
+    def teams(self) -> list[Team]:
+        return list(self._teams.values())
+
+    def get_team(self, team_id_or_name: str | None) -> Team | None:
+        key = (team_id_or_name or "").strip().lower()
+        if not key:
+            return None
+        if key in self._teams:
+            return self._teams[key]
+        for team in self._teams.values():
+            if team.name.lower() == key:
+                return team
+        return None
+
+    def assign_member_to_team(self, member: TeamMember, team: Team, *, leader: bool = False) -> TeamMember:
+        saved = self.register(member)
+        if saved.user_id is None:
+            return saved
+        if saved.user_id not in team.member_user_ids:
+            team.member_user_ids.append(saved.user_id)
+        if team.id not in saved.member_team_ids:
+            saved.member_team_ids.append(team.id)
+        if leader:
+            if saved.user_id not in team.manager_user_ids:
+                team.manager_user_ids.append(saved.user_id)
+            if team.id not in saved.leader_team_ids:
+                saved.leader_team_ids.append(team.id)
+        return saved
 
     def all(self) -> list[TeamMember]:
         return list(self._by_id.values()) + self._anon
@@ -106,6 +195,9 @@ class TeamRegistry:
         if member:
             member.dm_chat_id = chat_id
         return member
+
+    def set_teams(self, teams: list[Team]) -> None:
+        self._teams = {t.id: t for t in teams}
 
     @staticmethod
     def _candidates(m: TeamMember) -> list[str]:

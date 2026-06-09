@@ -11,7 +11,14 @@ from aiogram.types import Message
 
 from ...container import AppContainer
 from ...domain.enums import TaskStatus
-from ...domain.models import TeamMember
+from ...domain.models import Team, TeamMember
+from ...permissions import (
+    can_change_task_status,
+    can_delete_task,
+    can_manage_knowledge,
+    can_view_member_tasks,
+    is_superuser,
+)
 from .. import keyboards as kb
 from .. import text as tx
 
@@ -27,6 +34,12 @@ HELP = """\
 /mode auto|manual — авто-режим или подтверждение
 /board — канбан-доска
 /tasks — мои открытые задачи с кнопками статуса
+/now [@user] — текущие задачи пользователя (руководители/суперюзеры могут смотреть всех)
+/digest — кто чем занят сейчас по всей команде
+/trash — корзина удалённых задач на 4 часа
+/task_restore ID — восстановить задачу из корзины
+/task_edit ID правка — изменить задачу (руководитель своей команды/суперюзер)
+/task_del ID — снять/удалить задачу (руководитель своей команды/суперюзер)
 /report текст — вечерний отчёт (бот сам проставит статусы)
 /reconcile — показать вечернюю сверку сейчас
 /remind — проверить дедлайны и напомнить
@@ -63,6 +76,41 @@ HELP = """\
 """
 
 
+def _admin_help() -> str:
+    return """
+<b>Администрирование</b>
+/make_me_superuser — первичное назначение суперюзера (один раз)
+/grant_superuser @user — назначить суперюзера
+/team create Название — создать команду
+/team add_member TEAM @user — добавить подчинённого
+/team add_manager TEAM @user — назначить руководителя
+/team list — список команд
+/board_clear confirm — очистить канбан-доску
+/reset_bot confirm — полностью очистить бота
+"""
+
+
+def _visible_help(c: AppContainer) -> str:
+    base = HELP + _admin_help()
+    if c.team.superuser_exists():
+        base = base.replace("/make_me_superuser — первичное назначение суперюзера (один раз)\n", "")
+    return base
+
+
+def _actor(message: Message, c: AppContainer) -> TeamMember:
+    return _member_from_message(message, c)
+
+
+def _resolve_mentioned_member(c: AppContainer, message: Message, raw: str) -> TeamMember | None:
+    raw = raw.strip()
+    if raw.startswith("@"):
+        return c.team.resolve(raw)
+    if message.reply_to_message and message.reply_to_message.from_user:
+        u = message.reply_to_message.from_user
+        return c.team.register(TeamMember(user_id=u.id, username=u.username, full_name=u.full_name))
+    return c.team.resolve(raw)
+
+
 def _is_private(message: Message) -> bool:
     return getattr(message.chat, "type", "") == "private"
 
@@ -95,6 +143,64 @@ def _report_chat_id(message: Message, c: AppContainer, member: TeamMember) -> in
     return message.chat.id
 
 
+def _find_task(c: AppContainer, raw_id: str):
+    raw_id = (raw_id or "").strip()
+    return c.repo.get(raw_id) or c.repo.get_by_card(raw_id)
+
+
+def _tasks_for_member(c: AppContainer, member: TeamMember):
+    names = [member.username or "", member.full_name or "", *member.aliases]
+    tasks = []
+    seen: set[str] = set()
+    for name in names:
+        if not name:
+            continue
+        for task in c.repo.open_by_assignee(name):
+            if task.id not in seen:
+                seen.add(task.id)
+                tasks.append(task)
+    return tasks
+
+
+def _render_current_digest(c: AppContainer) -> str:
+    lines = ["🧭 <b>Кто чем занят сейчас</b>", "━━━━━━━━━━━━━━"]
+    members = [m for m in c.team.all() if m.user_id is not None]
+    if not members:
+        return "🧭 Команда пока не зарегистрирована."
+    for member in sorted(members, key=lambda m: (m.full_name or m.username or "").lower()):
+        tasks = _tasks_for_member(c, member)
+        active = [t for t in tasks if t.status is TaskStatus.in_progress]
+        name = member.mention()
+        if not tasks:
+            lines.append(f"👤 {name} — задач в работе нет")
+            continue
+        if not active:
+            lines.append(f"👤 {name} — нет выполняемых сейчас задач · задач в работе: <b>{len(tasks)}</b>")
+            continue
+        lines.append(f"👤 {name} — выполняет сейчас: <b>{len(active)}</b> · всего в работе: <b>{len(tasks)}</b>")
+        for task in active[:5]:
+            lines.append(f"  • <b>{esc(task.title)}</b> · 📅 {esc(task.deadline_display())}")
+    return "\n".join(lines)
+
+
+def _render_trash(c: AppContainer) -> str:
+    from datetime import datetime, timezone
+
+    items = sorted(c.repo.trashed(), key=lambda t: t.delete_after or datetime.max.replace(tzinfo=timezone.utc))
+    if not items:
+        return "🗑️ <b>Корзина пуста</b>"
+    now = datetime.now(timezone.utc)
+    lines = ["🗑️ <b>Корзина задач</b>", "━━━━━━━━━━━━━━", "Восстановить: <code>/task_restore ID</code>", ""]
+    for task in items:
+        left = "—"
+        if task.delete_after:
+            seconds = max(0, int((task.delete_after - now).total_seconds()))
+            left = f"{seconds // 3600}ч {(seconds % 3600) // 60}м"
+        lines.append(f"• <code>{esc(task.id)}</code> · <b>{esc(task.title)}</b>")
+        lines.append(f"  👤 {esc(task.assignee or '—')} · удалится через: <b>{esc(left)}</b>")
+    return "\n".join(lines)
+
+
 def _author_name(message: Message) -> str:
     user = message.from_user
     return (user.username or user.full_name) if user else "участник"
@@ -104,7 +210,147 @@ def _author_name(message: Message) -> str:
 async def cmd_help(message: Message, c: AppContainer) -> None:
     _member_from_message(message, c)
     suffix = "\n✅ Личные сообщения включены: сюда будут приходить подробные уведомления." if _is_private(message) else ""
-    await message.answer(HELP + suffix, reply_markup=kb.introduce_keyboard())
+    await message.answer(_visible_help(c) + suffix, reply_markup=kb.introduce_keyboard())
+
+
+
+
+@router.message(Command("make_me_superuser"))
+async def cmd_make_me_superuser(message: Message, c: AppContainer) -> None:
+    member = _actor(message, c)
+    if not c.team.make_superuser_once(member):
+        return
+    c.persist()
+    await message.answer("👑 Готово: вы первый суперюзер. Команда /make_me_superuser больше не будет показываться в /help.")
+
+
+@router.message(Command("grant_superuser", "make_superuser"))
+async def cmd_grant_superuser(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    target = _resolve_mentioned_member(c, message, (command.args or "").strip())
+    if target is None:
+        await message.answer("Формат: <code>/grant_superuser @username</code> или ответьте командой на сообщение участника.")
+        return
+    c.team.grant_superuser(target)
+    c.persist()
+    await message.answer(f"👑 Суперюзер назначен: {target.mention()}.")
+
+
+@router.message(Command("team", "teams"))
+async def cmd_team(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    args = (command.args or "").strip()
+    action, _, rest = args.partition(" ")
+    action_l = action.lower()
+    if action_l in {"list", "", "список"}:
+        teams = c.team.teams()
+        if not teams:
+            await message.answer("Команды ещё не созданы. Суперюзер может создать: <code>/team create Название</code>")
+            return
+        lines = ["👥 <b>Команды</b>"]
+        for t in teams:
+            managers = [c.team.get_by_user_id(uid) for uid in t.manager_user_ids]
+            members = [c.team.get_by_user_id(uid) for uid in t.member_user_ids]
+            lines.append(
+                f"• <code>{esc(t.id)}</code> · <b>{esc(t.name)}</b> · "
+                f"рук.: {', '.join(m.mention() for m in managers if m) or '—'} · "
+                f"уч.: {len([m for m in members if m])}"
+            )
+        await message.answer("\n".join(lines))
+        return
+    if not is_superuser(actor):
+        return
+    if action_l in {"create", "создать"}:
+        name = rest.strip()
+        if not name:
+            await message.answer("Формат: <code>/team create Название</code>")
+            return
+        team = c.team.add_team(Team(name=name[:80]))
+        c.persist()
+        await message.answer(f"👥 Команда создана: <b>{esc(team.name)}</b> · <code>{team.id}</code>")
+        return
+    if action_l in {"add_manager", "manager", "lead", "leader", "руководитель"}:
+        raw_team, _, raw_user = rest.partition(" ")
+        team = c.team.get_team(raw_team)
+        target = _resolve_mentioned_member(c, message, raw_user)
+        if team is None or target is None:
+            await message.answer("Формат: <code>/team add_manager TEAM @username</code>")
+            return
+        c.team.assign_member_to_team(target, team, leader=True)
+        c.persist()
+        await message.answer(f"🧭 Руководитель команды <b>{esc(team.name)}</b>: {target.mention()}.")
+        return
+    if action_l in {"add_member", "member", "участник", "подчиненный", "подчинённый"}:
+        raw_team, _, raw_user = rest.partition(" ")
+        team = c.team.get_team(raw_team)
+        target = _resolve_mentioned_member(c, message, raw_user)
+        if team is None or target is None:
+            await message.answer("Формат: <code>/team add_member TEAM @username</code>")
+            return
+        c.team.assign_member_to_team(target, team, leader=False)
+        c.persist()
+        await message.answer(f"👤 Участник добавлен в <b>{esc(team.name)}</b>: {target.mention()}.")
+        return
+    await message.answer("Команды: <code>/team create</code>, <code>/team add_member</code>, <code>/team add_manager</code>, <code>/team list</code>")
+
+
+@router.message(Command("manager", "make_manager"))
+async def cmd_manager(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    raw_user, _, raw_team = (command.args or "").strip().partition(" ")
+    target = _resolve_mentioned_member(c, message, raw_user)
+    team = c.team.get_team(raw_team)
+    if team is None or target is None:
+        await message.answer("Формат: <code>/manager @username TEAM</code>")
+        return
+    c.team.assign_member_to_team(target, team, leader=True)
+    c.persist()
+    await message.answer(f"🧭 Руководитель команды <b>{esc(team.name)}</b>: {target.mention()}.")
+
+
+@router.message(Command("board_clear", "clear_board"))
+async def cmd_board_clear(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    if (command.args or "").strip().lower() not in {"confirm", "yes", "да", "подтверждаю"}:
+        await message.answer("⚠️ Очистить всю канбан-доску? Подтвердите: <code>/board_clear confirm</code>")
+        return
+    cards = await c.board.list_cards()
+    for card in cards:
+        await c.board.delete_card(card.id)
+    for task in c.repo.all():
+        c.memory.forget(task.id)
+    c.repo.clear()
+    c.persist()
+    await message.answer(f"🧹 Канбан-доска очищена. Удалено карточек: <b>{len(cards)}</b>.")
+
+
+@router.message(Command("reset_bot", "bot_clear"))
+async def cmd_reset_bot(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    if (command.args or "").strip().lower() not in {"confirm", "yes", "да", "подтверждаю"}:
+        await message.answer("⚠️ Полностью очистить задачи, доску, знания, заметки и участников кроме суперюзеров? Подтвердите: <code>/reset_bot confirm</code>")
+        return
+    cards = await c.board.list_cards()
+    for card in cards:
+        await c.board.delete_card(card.id)
+    for task in c.repo.all():
+        c.memory.forget(task.id)
+    tasks = c.repo.clear()
+    c.cabinet.clear_knowledge()
+    for member in c.team.all():
+        c.cabinet.clear_notes(member)
+    forgotten = c.team.clear(keep_superusers=True, clear_teams=True)
+    c.game.reset()
+    c.persist()
+    await message.answer(f"🧹 Бот очищен: задач {tasks}, карточек {len(cards)}, забыто участников {forgotten}.")
 
 
 @router.message(Command("mode"))
@@ -125,7 +371,15 @@ async def cmd_mode(message: Message, command: CommandObject, c: AppContainer) ->
 
 @router.message(Command("board"))
 async def cmd_board(message: Message, c: AppContainer) -> None:
+    actor = _actor(message, c)
     cards = await c.board.list_cards()
+    trashed_cards = {t.board_card_id for t in c.repo.trashed() if t.board_card_id}
+    cards = [card for card in cards if card.id not in trashed_cards]
+    if c.team.superuser_exists() and not is_superuser(actor):
+        allowed = set(actor.leader_team_ids)
+        cards = [card for card in cards if (task := c.repo.get_by_card(card.id)) is not None and task.team_id in allowed]
+        if not cards:
+            return
     await message.answer(tx.render_board(cards))
 
 
@@ -177,6 +431,7 @@ async def send_my_tasks(message: Message, c: AppContainer, *, query_text: str = 
     Источник истины — доска YouGile (переживает перезапуски). Чужие задачи в общий
     чат не вываливаем: если цель не определена — просим уточнить/представиться.
     """
+    actor = _member_from_message(message, c)
     target, label, is_self = _resolve_target(c, query_text, message.from_user)
     if target is None:
         if label:  # упомянули неизвестного участника
@@ -187,9 +442,15 @@ async def send_my_tasks(message: Message, c: AppContainer, *, query_text: str = 
                 "или уточните: <code>таски @username</code>."
             )
         return
+    if not can_view_member_tasks(actor, target):
+        return
 
     cards = await c.board.list_cards()
-    mine = [c_ for c_ in cards if c_.status is not TaskStatus.done and _card_belongs_to(c_, target)]
+    trashed_cards = {t.board_card_id for t in c.repo.trashed() if t.board_card_id}
+    mine = [
+        c_ for c_ in cards
+        if c_.id not in trashed_cards and c_.status is not TaskStatus.done and _card_belongs_to(c_, target)
+    ]
 
     whose = "У вас" if is_self else f"У {label}"
     if not mine:
@@ -201,13 +462,107 @@ async def send_my_tasks(message: Message, c: AppContainer, *, query_text: str = 
     for card in mine[:20]:
         await message.answer(
             tx.render_board_task(card),
-            reply_markup=kb.board_task_keyboard(card.id, card.status),
+            reply_markup=(
+                kb.board_task_keyboard(
+                    card.id,
+                    card.status,
+                    allow_status=(task := c.repo.get_by_card(card.id)) is not None
+                    and can_change_task_status(actor, task, c.team),
+                    allow_delete=task is not None and can_delete_task(actor, task, c.team),
+                )
+                if (task := c.repo.get_by_card(card.id)) is not None
+                and can_change_task_status(actor, task, c.team)
+                else None
+            ),
         )
+
+
+
+
+@router.message(Command("now", "current_tasks", "сейчас"))
+async def cmd_now(message: Message, command: CommandObject, c: AppContainer) -> None:
+    args = (command.args or "").strip()
+    await send_my_tasks(message, c, query_text=args)
+
+
+@router.message(Command("digest", "current_digest", "занятость"))
+async def cmd_current_digest(message: Message, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not (is_superuser(actor) or actor.leader_team_ids):
+        return
+    await message.answer(_render_current_digest(c))
+
+
+@router.message(Command("trash", "deleted_tasks", "корзина"))
+async def cmd_trash(message: Message, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not (is_superuser(actor) or actor.leader_team_ids):
+        return
+    await c.service.purge_expired_trash()
+    await message.answer(_render_trash(c))
+
+
+@router.message(Command("task_restore", "restore_task"))
+async def cmd_task_restore(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    raw_id = (command.args or "").strip()
+    task = c.repo.get(raw_id) or c.repo.get_by_card(raw_id)
+    if task is None or task.trashed_at is None:
+        await message.answer(f"Задача <code>{esc(raw_id)}</code> не найдена в корзине.")
+        return
+    if not can_delete_task(actor, task, c.team):
+        return
+    await c.service.restore_task(task)
+    await message.answer(f"♻️ Восстановил задачу: «{esc(task.title)}».")
 
 
 @router.message(Command("tasks"))
 async def cmd_tasks(message: Message, c: AppContainer) -> None:
     await send_my_tasks(message, c)
+
+
+
+
+@router.message(Command("task_edit", "edit_task"))
+async def cmd_task_edit(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    raw_id, _, correction = (command.args or "").strip().partition(" ")
+    if not raw_id or not correction.strip():
+        await message.answer("Формат: <code>/task_edit ID что изменить</code>")
+        return
+    task = _find_task(c, raw_id)
+    if task is None:
+        await message.answer(f"Задача <code>{esc(raw_id)}</code> не найдена.")
+        return
+    if task.trashed_at is not None:
+        await message.answer("Задача в корзине. Сначала восстановите её через /task_restore.")
+        return
+    if not can_delete_task(actor, task, c.team):
+        return
+    await c.service.apply_correction(task, correction)
+    await c.service.edit_task(task)
+    await message.answer("✏️ <b>Задача обновлена</b>\n" + tx.render_task_card(task))
+
+
+@router.message(Command("task_del", "delete_task"))
+async def cmd_task_del(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    raw_id = (command.args or "").strip()
+    if not raw_id:
+        await message.answer("Формат: <code>/task_del ID</code>")
+        return
+    task = _find_task(c, raw_id)
+    if task is None:
+        await message.answer(f"Задача <code>{esc(raw_id)}</code> не найдена.")
+        return
+    if task.trashed_at is not None:
+        await message.answer(f"Задача уже в корзине. Восстановить: <code>/task_restore {esc(task.id)}</code>")
+        return
+    if not can_delete_task(actor, task, c.team):
+        return
+    await c.service.soft_delete_task(task)
+    c.persist()
+    await message.answer(f"🗑️ Задача перемещена в корзину на 4 часа: «{esc(task.title)}». Восстановить: <code>/task_restore {esc(task.id)}</code>")
 
 
 @router.message(Command("profile", "cabinet", "me", "profil", "профиль"))
@@ -227,6 +582,8 @@ async def cmd_leaderboard(message: Message, c: AppContainer) -> None:
 @router.message(Command("game_reset", "leaderboard_reset", "сброс_очков"))
 async def cmd_game_reset(message: Message, c: AppContainer) -> None:
     """Обнулить лидерборд (убрать тестовые/устаревшие профили)."""
+    if not is_superuser(_actor(message, c)):
+        return
     n = c.game.reset()
     await message.answer(
         f"🧹 Лидерборд обнулён (удалено профилей: {n}). Очки начнут копиться заново "
@@ -308,7 +665,9 @@ async def cmd_notes(message: Message, c: AppContainer) -> None:
 @router.message(Command("kb", "knowledge"))
 async def cmd_kb(message: Message, command: CommandObject, c: AppContainer) -> None:
     args = (command.args or "").strip()
+    member = _actor(message, c)
     author = _author_name(message)
+    team_id = member.member_team_ids[0] if member.member_team_ids else None
     if not args:
         await message.answer(c.cabinet.render_knowledge(c.cabinet.recent_knowledge()))
         return
@@ -319,7 +678,7 @@ async def cmd_kb(message: Message, command: CommandObject, c: AppContainer) -> N
         if not sep or not body.strip():
             await message.answer("📚 Формат: <code>/kb add Заголовок | полезный текст</code>")
             return
-        item = c.cabinet.add_knowledge(title, body, author)
+        item = c.cabinet.add_knowledge(title, body, author, author_user_id=member.user_id, team_id=team_id)
         await message.answer(
             "📚 <b>Добавил в базу знаний</b>\n"
             f"━━━━━━━━━━━━━━\n<b>#{item.id} · {esc(item.title)}</b>\n{esc(item.text)}"
@@ -335,6 +694,9 @@ async def cmd_kb(message: Message, command: CommandObject, c: AppContainer) -> N
         if not raw_id.isdigit() or not sep or not body.strip():
             await message.answer("✏️ Формат: <code>/kb edit ID Заголовок | новый текст</code>")
             return
+        item = c.cabinet.get_knowledge(int(raw_id))
+        if item is not None and not can_manage_knowledge(member, item.author_user_id, item.team_id):
+            return
         item = c.cabinet.edit_knowledge(int(raw_id), title, body, author)
         if item is None:
             await message.answer(f"📚 Запись #{esc(raw_id)} не найдена.")
@@ -349,6 +711,9 @@ async def cmd_kb(message: Message, command: CommandObject, c: AppContainer) -> N
         if not raw_id.isdigit():
             await message.answer("🗑️ Формат: <code>/kb del ID</code>")
             return
+        item = c.cabinet.get_knowledge(int(raw_id))
+        if item is not None and not can_manage_knowledge(member, item.author_user_id, item.team_id):
+            return
         item = c.cabinet.delete_knowledge(int(raw_id))
         if item is None:
             await message.answer(f"📚 Запись #{esc(raw_id)} не найдена.")
@@ -359,6 +724,8 @@ async def cmd_kb(message: Message, command: CommandObject, c: AppContainer) -> N
         )
         return
     if action_l in {"clear", "clean", "очистить", "чистить"}:
+        if not is_superuser(member):
+            return
         confirm = rest.strip().lower()
         total = len(c.cabinet.recent_knowledge(limit=10_000))
         if confirm not in {"confirm", "yes", "да", "подтверждаю"}:
@@ -492,6 +859,8 @@ async def cmd_remind(message: Message, c: AppContainer) -> None:
 
 @router.message(Command("forget", "reset_team"))
 async def cmd_forget(message: Message, c: AppContainer) -> None:
+    if not is_superuser(_actor(message, c)):
+        return
     count = len(c.team.all())
     if count == 0:
         await message.answer("Память о команде уже пуста — забывать некого 🙂")

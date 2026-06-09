@@ -93,7 +93,14 @@ _STATUS_BTN = {
 }
 
 
-def board_task_keyboard(card_id: str, current: TaskStatus, *, confirm_delete: bool = False) -> InlineKeyboardMarkup:
+def board_task_keyboard(
+    card_id: str,
+    current: TaskStatus,
+    *,
+    confirm_delete: bool = False,
+    allow_delete: bool = True,
+    allow_status: bool = True,
+) -> InlineKeyboardMarkup:
     """Клавиатура управления задачей: 3 статуса (с ✓ у текущего) + удаление.
 
     При confirm_delete показываем подтверждение удаления вместо обычного ряда.
@@ -106,6 +113,9 @@ def board_task_keyboard(card_id: str, current: TaskStatus, *, confirm_delete: bo
         for status, (label, action) in _STATUS_BTN.items()
     ]
 
+    rows = [status_row] if allow_status else []
+    if not allow_delete:
+        return InlineKeyboardMarkup(inline_keyboard=rows)
     action_row = (
         [
             _button("🗑️ Да, удалить", BoardCD(action="del_yes", cid=card_id)),
@@ -114,4 +124,5 @@ def board_task_keyboard(card_id: str, current: TaskStatus, *, confirm_delete: bo
         if confirm_delete
         else [_button("🗑️ Удалить", BoardCD(action="del", cid=card_id))]
     )
-    return InlineKeyboardMarkup(inline_keyboard=[status_row, action_row])
+    rows.append(action_row)
+    return InlineKeyboardMarkup(inline_keyboard=rows)

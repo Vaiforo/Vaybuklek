@@ -10,6 +10,8 @@ from aiogram.types import CallbackQuery, Message
 
 from ...container import AppContainer
 from ...domain.enums import TaskStatus
+from ...domain.models import TeamMember
+from ...permissions import can_change_task_status, can_create_task, can_delete_task, can_manage_task, is_superuser
 from ...logging_setup import get_logger
 from .. import keyboards as kb
 from .. import text as tx
@@ -19,6 +21,17 @@ from ..states import EditTask
 
 router = Router(name="callbacks")
 log = get_logger("dirizher.bot.callbacks")
+
+
+def _actor(cb: CallbackQuery, c: AppContainer) -> TeamMember | None:
+    user = cb.from_user
+    if user is None:
+        return None
+    return c.team.register(TeamMember(user_id=user.id, username=user.username, full_name=user.full_name))
+
+
+def _ignore_unauthorized(cb: CallbackQuery) -> object:
+    return cb.answer()
 
 
 async def _finish(cb: CallbackQuery, text: str) -> None:
@@ -49,6 +62,10 @@ async def on_confirm(cb: CallbackQuery, callback_data: ConfirmCD, c: AppContaine
     pending = c.pending.get(pid)
     if pending is None:
         await cb.answer("Карточка устарела 🙈", show_alert=False)
+        return
+    actor = _actor(cb, c)
+    if action in {"confirm", "edit", "reject", "dup_merge", "dup_new", "clarify_yes", "clarify_no"} and not can_create_task(actor, pending.task, c.team):
+        await cb.answer()
         return
 
     if action == "confirm":
@@ -106,6 +123,11 @@ async def on_pick_assignee(cb: CallbackQuery, callback_data: PickCD, c: AppConta
         await cb.answer("Карточка устарела 🙈", show_alert=False)
         return
 
+    actor = _actor(cb, c)
+    if not can_create_task(actor, pending.task, c.team):
+        await cb.answer()
+        return
+
     if callback_data.action == "cancel":
         c.pending.pop(callback_data.pid)
         await _finish(cb, f"🚫 Не завожу: «{esc(pending.task.title)}» (исполнитель не выбран).")
@@ -146,6 +168,9 @@ async def on_correction(message: Message, c: AppContainer, state: FSMContext) ->
     if pending is None:
         await message.answer("Карточка для правки не найдена 🙈")
         return
+    actor = c.team.register(TeamMember(user_id=message.from_user.id, username=message.from_user.username, full_name=message.from_user.full_name)) if message.from_user else None
+    if not can_manage_task(actor, pending.task, c.team):
+        return
     await c.service.apply_correction(pending.task, message.text or "")
     await message.answer(
         "Переформулировал:\n\n" + tx.render_task_card(pending.task, header="✏️ Поправленная задача"),
@@ -159,6 +184,10 @@ async def on_task_action(cb: CallbackQuery, callback_data: TaskCD, c: AppContain
     task = c.repo.get(callback_data.task_id)
     if task is None:
         await cb.answer("Задача не найдена", show_alert=False)
+        return
+    actor = _actor(cb, c)
+    if not can_change_task_status(actor, task, c.team):
+        await cb.answer()
         return
     if callback_data.action == "done":
         await c.service.set_status(task, TaskStatus.done)
@@ -174,6 +203,9 @@ async def on_task_action(cb: CallbackQuery, callback_data: TaskCD, c: AppContain
 # ── Очистка памяти о команде ─────────────────────────────────────────────────
 @router.callback_query(ForgetCD.filter())
 async def on_forget(cb: CallbackQuery, callback_data: ForgetCD, c: AppContainer) -> None:
+    if not is_superuser(_actor(cb, c)):
+        await cb.answer()
+        return
     if callback_data.action == "no":
         await _finish(cb, "↩️ Отменено — участники на месте.")
         return
@@ -212,11 +244,22 @@ async def _card_status(c: AppContainer, card_id: str, fallback: TaskStatus = Tas
 async def on_board_action(cb: CallbackQuery, callback_data: BoardCD, c: AppContainer) -> None:
     action, cid = callback_data.action, callback_data.cid
     msg = cb.message if isinstance(cb.message, Message) else None
+    actor = _actor(cb, c)
+    task_for_acl = c.repo.get_by_card(cid)
+    if c.team.superuser_exists() and task_for_acl is None and not is_superuser(actor):
+        await cb.answer()
+        return
+    if task_for_acl is not None and task_for_acl.trashed_at is not None:
+        await cb.answer("Задача в корзине. Восстановите через /task_restore", show_alert=False)
+        return
 
     # Смена статуса (todo / in_progress / done)
     if action in _BOARD_STATUS:
         status = _BOARD_STATUS[action]
-        task = c.repo.get_by_card(cid)
+        task = task_for_acl
+        if task is not None and not can_change_task_status(actor, task, c.team):
+            await cb.answer()
+            return
         try:
             if task is not None:
                 await c.service.set_status(task, status)
@@ -231,15 +274,21 @@ async def on_board_action(cb: CallbackQuery, callback_data: BoardCD, c: AppConta
         if status is TaskStatus.done and task is not None:
             await _celebrate(c, msg, task)
         if msg:
-            await msg.edit_reply_markup(reply_markup=kb.board_task_keyboard(cid, status))
+            await msg.edit_reply_markup(reply_markup=kb.board_task_keyboard(cid, status, allow_delete=task is not None and can_delete_task(actor, task, c.team)))
         return
 
     # Запрос на удаление → показать подтверждение
     if action == "del":
+        if task_for_acl is None:
+            await cb.answer("Не могу удалить без корзины: сначала синхронизируйте задачу", show_alert=True)
+            return
+        if not can_delete_task(actor, task_for_acl, c.team):
+            await cb.answer()
+            return
         current = await _card_status(c, cid)
         if msg:
             await msg.edit_reply_markup(
-                reply_markup=kb.board_task_keyboard(cid, current, confirm_delete=True)
+                reply_markup=kb.board_task_keyboard(cid, current, confirm_delete=True, allow_delete=task_for_acl is not None and can_delete_task(actor, task_for_acl, c.team))
             )
         await cb.answer("Удалить задачу?")
         return
@@ -247,22 +296,25 @@ async def on_board_action(cb: CallbackQuery, callback_data: BoardCD, c: AppConta
     if action == "del_no":
         current = await _card_status(c, cid)
         if msg:
-            await msg.edit_reply_markup(reply_markup=kb.board_task_keyboard(cid, current))
+            await msg.edit_reply_markup(reply_markup=kb.board_task_keyboard(cid, current, allow_delete=task_for_acl is not None and can_delete_task(actor, task_for_acl, c.team)))
         await cb.answer("Отменено")
         return
 
     if action == "del_yes":
-        task = c.repo.get_by_card(cid)
+        task = task_for_acl
+        if task is None:
+            await cb.answer("Не могу удалить без корзины: сначала синхронизируйте задачу", show_alert=True)
+            return
+        if not can_delete_task(actor, task, c.team):
+            await cb.answer()
+            return
         try:
-            if task is not None:
-                await c.service.delete_task(task)
-            else:
-                await c.board.delete_card(cid)
+            await c.service.soft_delete_task(task)
         except Exception as e:  # noqa: BLE001
             log.warning("Не удалось удалить карточку %s: %s", cid, e)
             await cb.answer("Не получилось удалить 🙈", show_alert=True)
             return
-        await cb.answer("🗑️ Удалено")
+        await cb.answer("🗑️ В корзине на 4 часа")
         if msg:
-            await msg.edit_text("🗑️ Задача удалена.")
+            await msg.edit_text("🗑️ Задача перемещена в корзину на 4 часа. Её можно восстановить через /trash.")
         return

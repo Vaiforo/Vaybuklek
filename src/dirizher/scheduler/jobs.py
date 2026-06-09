@@ -45,6 +45,7 @@ async def run_morning_digest(c: AppContainer, *, today: date | None = None) -> i
 
     Триггерится n8n-кроном (POST /jobs/morning-digest) или APScheduler.
     Возвращает число чатов, куда отправлена сводка."""
+    await run_trash_purge(c)
     today = today or date.today()
     if c.bot is None:
         log.warning("Утренняя сводка: бот не инициализирован")
@@ -95,11 +96,20 @@ async def run_leaderboard_post(c: AppContainer) -> int:
     return len(chats)
 
 
+async def run_trash_purge(c: AppContainer) -> int:
+    """Окончательно удалить задачи, срок хранения которых в корзине истёк."""
+    removed = await c.service.purge_expired_trash()
+    if removed:
+        log.info("Корзина: окончательно удалено задач: %d", removed)
+    return removed
+
+
 async def run_reminders(c: AppContainer, *, today: date | None = None) -> int:
     """Напомнить об открытых задачах, дедлайн которых близко/просрочен.
 
     Возвращает число отправленных напоминаний.
     """
+    await run_trash_purge(c)
     today = today or date.today()
     horizon_day = today + timedelta(days=max(1, c.settings.schedule.remind_before_hours // 24))
     sent = 0

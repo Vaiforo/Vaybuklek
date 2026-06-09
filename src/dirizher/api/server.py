@@ -25,6 +25,7 @@ from ..scheduler.jobs import (
     run_leaderboard_post,
     run_morning_digest,
     run_reminders,
+    run_trash_purge,
 )
 
 log = get_logger("dirizher.api")
@@ -77,6 +78,12 @@ def create_api(container: AppContainer) -> FastAPI:
         _auth(x_dirizher_token)
         chats = await run_leaderboard_post(container)
         return {"chats_notified": chats}
+
+    @app.post("/jobs/trash-purge")
+    async def jobs_trash_purge(x_dirizher_token: str | None = Header(default=None)) -> dict[str, int]:
+        _auth(x_dirizher_token)
+        removed = await run_trash_purge(container)
+        return {"tasks_deleted": removed}
 
     @app.post("/jobs/evening-reconcile")
     async def jobs_evening(x_dirizher_token: str | None = Header(default=None)) -> dict[str, int]:

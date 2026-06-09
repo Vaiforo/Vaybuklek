@@ -60,6 +60,9 @@ class TeamMember(BaseModel):
     yougile_id: str | None = None     # id пользователя на доске YouGile
     voice_registered: bool = False
     dm_chat_id: int | None = None     # личный чат с ботом для персональных уведомлений
+    is_superuser: bool = False
+    leader_team_ids: list[str] = Field(default_factory=list)
+    member_team_ids: list[str] = Field(default_factory=list)
 
     def mention(self) -> str:
         """HTML-упоминание (бот работает в parse_mode=HTML)."""
@@ -69,6 +72,15 @@ class TeamMember(BaseModel):
             name = _esc(self.full_name or "участник")
             return f'<a href="tg://user?id={self.user_id}">{name}</a>'
         return _esc(self.full_name or "участник")
+
+
+class Team(BaseModel):
+    """Оргструктура: команда, участники и руководители."""
+
+    id: str = Field(default_factory=_new_id)
+    name: str
+    manager_user_ids: list[int] = Field(default_factory=list)
+    member_user_ids: list[int] = Field(default_factory=list)
 
 
 class SourceRef(BaseModel):
@@ -93,6 +105,8 @@ class Task(BaseModel):
     deadline_time: time | None = None  # время суток, если указано
     priority: Priority = Priority.medium
     status: TaskStatus = TaskStatus.todo
+    team_id: str | None = None
+    created_by_user_id: int | None = None
 
     confidence: float = 1.0
     sources: list[SourceRef] = Field(default_factory=list)
@@ -103,6 +117,9 @@ class Task(BaseModel):
     reminded_at: datetime | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
+    trashed_at: datetime | None = None
+    delete_after: datetime | None = None
+    restore_status: TaskStatus | None = None
 
     @classmethod
     def from_extracted(cls, ex: ExtractedTask, source: SourceRef) -> "Task":
