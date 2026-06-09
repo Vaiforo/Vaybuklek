@@ -6,7 +6,7 @@ import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
-from ..domain.models import SourceRef, Task
+from ..domain.models import SourceRef, Task, TeamMember
 from ..services.task_service import Outcome, ProcessedTask
 
 
@@ -18,6 +18,8 @@ class Pending:
     outcome: Outcome
     chat_id: int
     duplicate_of_id: str | None = None
+    # Кандидаты-тёзки для выбора исполнителя при коллизии имён (#1).
+    assignee_options: list[TeamMember] = field(default_factory=list)
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
 
@@ -36,6 +38,7 @@ class PendingStore:
             outcome=p.outcome,
             chat_id=chat_id,
             duplicate_of_id=p.duplicate_of.id if p.duplicate_of else None,
+            assignee_options=list(p.ambiguous),
         )
         self._items[pid] = pending
         return pending

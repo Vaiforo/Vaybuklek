@@ -31,7 +31,7 @@ async def amain() -> None:
     import uvicorn
 
     from .api.server import create_api
-    from .bot.app import build_bot, build_dispatcher
+    from .bot.app import build_bot, build_dispatcher, setup_bot_commands
     from .scheduler.scheduler import build_scheduler
 
     container = AppContainer(settings)
@@ -55,6 +55,7 @@ async def amain() -> None:
 
     coros = [uv.serve()]
     if settings.telegram.mode == "polling":
+        await setup_bot_commands(bot)  # меню команд по «/» в Telegram
         me = await bot.get_me()
         log.info("Бот @%s запущен (polling) · API на %s:%s", me.username, settings.api.host, settings.api.port)
         coros.append(dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types()))

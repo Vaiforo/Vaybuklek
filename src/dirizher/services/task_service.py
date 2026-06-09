@@ -8,14 +8,14 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from enum import Enum
 import re as _re
 
 from ..config import Settings
 from ..domain.enums import TaskStatus
-from ..domain.models import SourceRef, Task
+from ..domain.models import SourceRef, Task, TeamMember
 from ..integrations.yougile import BoardClient
 from ..llm.base import ExtractionContext, LLMProvider
 from ..logging_setup import get_logger
@@ -69,6 +69,9 @@ class ProcessedTask:
     outcome: Outcome
     duplicate_of: Task | None = None
     dup_score: float | None = None
+    # Тёзки: если имя исполнителя подходит нескольким участникам — список
+    # кандидатов, у которых надо уточнить «кто именно берётся за задачу» (#1).
+    ambiguous: list[TeamMember] = field(default_factory=list)
 
 
 class TaskService:
@@ -104,6 +107,7 @@ class TaskService:
         *,
         today: date | None = None,
         history: list[str] | None = None,
+        sender: TeamMember | None = None,
     ) -> list[ProcessedTask]:
         ctx = ExtractionContext(
             today=today or date.today(),
@@ -145,19 +149,34 @@ class TaskService:
             for who in assignees:
                 task = Task.from_extracted(ex, source)
                 task.assignee = who
-                member = self.team.resolve(task.assignee)
-                if member:
-                    task.assignee = member.username or member.full_name or task.assignee
+                ambiguous: list[TeamMember] = []
 
-                # Анти-галлюцинация: если LLM навесил задачу на человека, которого в
-                # тексте/переписке нет, — это выдуманное «навешивание на всю команду»
-                # (фан-аут). Такую задачу не заводим.
-                if who and not self._assignee_grounded(who, member, haystack):
-                    log.info("Пропуск: исполнитель «%s» не упомянут в источнике — выдумка", who)
-                    continue
+                if who:
+                    member = self.team.resolve(who)
+                    namesakes = self.team.resolve_all(who)
+
+                    # Анти-галлюцинация: если LLM навесил задачу на человека, которого в
+                    # тексте/переписке нет, — это выдуманное «навешивание на всю команду»
+                    # (фан-аут). Такую задачу не заводим.
+                    if not self._assignee_grounded(who, member, haystack):
+                        log.info("Пропуск: исполнитель «%s» не упомянут в источнике — выдумка", who)
+                        continue
+
+                    if len(namesakes) > 1:
+                        # Тёзки: имя подходит нескольким — оставляем исходное имя,
+                        # а в present() уточним «кто именно» кнопками (#1).
+                        ambiguous = namesakes
+                    elif member:
+                        task.assignee = member.username or member.full_name or who
+                else:
+                    # Исполнитель явно не назван и из контекста не восстановлен.
+                    # Берём за исполнителя автора сообщения (#2) — он сам себе ставит
+                    # задачу. Для встреч/симуляции (sender=None) оставляем как было.
+                    if sender is not None:
+                        task.assignee = sender.username or sender.full_name or None
 
                 if low_conf:
-                    processed.append(ProcessedTask(task, Outcome.low_confidence))
+                    processed.append(ProcessedTask(task, Outcome.low_confidence, ambiguous=ambiguous))
                     continue
 
                 dup = self.memory.find_duplicate(task.dedup_text())
@@ -165,10 +184,11 @@ class TaskService:
                 # дубль засчитываем только при совпадении исполнителя
                 if existing and (existing.assignee or "").lower() == (task.assignee or "").lower():
                     processed.append(
-                        ProcessedTask(task, Outcome.duplicate, duplicate_of=existing, dup_score=dup.score)
+                        ProcessedTask(task, Outcome.duplicate, duplicate_of=existing,
+                                      dup_score=dup.score, ambiguous=ambiguous)
                     )
                 else:
-                    processed.append(ProcessedTask(task, Outcome.new))
+                    processed.append(ProcessedTask(task, Outcome.new, ambiguous=ambiguous))
         return self._dedup_batch(processed)
 
     def _assignee_grounded(self, who: str, member, haystack: str) -> bool:

@@ -13,8 +13,8 @@ from ...domain.enums import TaskStatus
 from ...logging_setup import get_logger
 from .. import keyboards as kb
 from .. import text as tx
-from ..callback_data import BoardCD, ConfirmCD, ForgetCD, TaskCD
-from ..flow import notify_workload
+from ..callback_data import BoardCD, ConfirmCD, ForgetCD, PickCD, TaskCD
+from ..flow import finalize, notify_workload
 from ..states import EditTask
 
 router = Router(name="callbacks")
@@ -96,6 +96,44 @@ async def on_confirm(cb: CallbackQuery, callback_data: ConfirmCD, c: AppContaine
     elif action == "clarify_no":
         c.pending.pop(pid)
         await _finish(cb, "🚫 Понял, не завожу.")
+
+
+# ── Выбор исполнителя при коллизии имён (#1) ─────────────────────────────────
+@router.callback_query(PickCD.filter())
+async def on_pick_assignee(cb: CallbackQuery, callback_data: PickCD, c: AppContainer) -> None:
+    pending = c.pending.get(callback_data.pid)
+    if pending is None:
+        await cb.answer("Карточка устарела 🙈", show_alert=False)
+        return
+
+    if callback_data.action == "cancel":
+        c.pending.pop(callback_data.pid)
+        await _finish(cb, f"🚫 Не завожу: «{esc(pending.task.title)}» (исполнитель не выбран).")
+        return
+
+    options = pending.assignee_options
+    try:
+        chosen = options[int(callback_data.idx)]
+    except (ValueError, IndexError):
+        await cb.answer("Не понял выбор 🙈", show_alert=False)
+        return
+
+    c.pending.pop(callback_data.pid)
+    # Закрепляем конкретного человека за задачей.
+    pending.task.assignee = chosen.username or chosen.full_name
+    pending.task.assignee_yougile_ids = [chosen.yougile_id] if chosen.yougile_id else []
+
+    who = chosen.full_name or chosen.username or "участник"
+    if isinstance(cb.message, Message):
+        await cb.message.edit_text(f"👤 Исполнитель: <b>{esc(who)}</b>\n\n" + tx.render_task_card(pending.task))
+    await cb.answer(f"Назначено: {who}")
+
+    # Дальше — обычный поток (авто-создание или подтверждение).
+    from ...services.task_service import ProcessedTask
+
+    dup = c.repo.get(pending.duplicate_of_id) if pending.duplicate_of_id else None
+    p = ProcessedTask(task=pending.task, outcome=pending.outcome, duplicate_of=dup)
+    await finalize(cb.bot, c, p, pending.chat_id)
 
 
 # ── Приём правки (FSM) ───────────────────────────────────────────────────────

@@ -49,28 +49,38 @@ async def notify_assignee(bot: Bot, c: AppContainer, created, chat_id: int) -> N
 async def present(bot: Bot, c: AppContainer, processed: list[ProcessedTask], chat_id: int) -> None:
     if not processed:
         return
-    auto = c.mode.is_auto(chat_id)
     for p in processed:
-        if p.outcome is Outcome.low_confidence:
-            await _ask_clarify(bot, c, p, chat_id)
-        elif p.outcome is Outcome.duplicate:
-            if auto and p.duplicate_of:
-                merged = await c.service.merge_duplicate(p.duplicate_of, p.task.sources[0])
-                await bot.send_message(
-                    chat_id,
-                    f"♻️ Объединил с существующей: «{esc(merged.title)}» (источники: "
-                    f"{len(merged.sources)}).",
-                )
-            else:
-                await _ask_duplicate(bot, c, p, chat_id)
-        else:  # new
-            if auto:
-                created = await c.service.create_on_board(p.task)
-                await bot.send_message(chat_id, tx.render_created(created))
-                await notify_assignee(bot, c, created, chat_id)
-                await notify_workload(bot, c, created.assignee, chat_id)
-            else:
-                await _ask_confirm(bot, c, p, chat_id)
+        # Коллизия имён: имя исполнителя подходит нескольким — сперва уточняем,
+        # кто именно берётся за задачу (#1), и только потом заводим/подтверждаем.
+        if p.ambiguous:
+            await _ask_pick_assignee(bot, c, p, chat_id)
+        else:
+            await finalize(bot, c, p, chat_id)
+
+
+async def finalize(bot: Bot, c: AppContainer, p: ProcessedTask, chat_id: int) -> None:
+    """Завести/подтвердить/уточнить одну задачу (исполнитель уже однозначен)."""
+    auto = c.mode.is_auto(chat_id)
+    if p.outcome is Outcome.low_confidence:
+        await _ask_clarify(bot, c, p, chat_id)
+    elif p.outcome is Outcome.duplicate:
+        if auto and p.duplicate_of:
+            merged = await c.service.merge_duplicate(p.duplicate_of, p.task.sources[0])
+            await bot.send_message(
+                chat_id,
+                f"♻️ Объединил с существующей: «{esc(merged.title)}» (источники: "
+                f"{len(merged.sources)}).",
+            )
+        else:
+            await _ask_duplicate(bot, c, p, chat_id)
+    else:  # new
+        if auto:
+            created = await c.service.create_on_board(p.task)
+            await bot.send_message(chat_id, tx.render_created(created))
+            await notify_assignee(bot, c, created, chat_id)
+            await notify_workload(bot, c, created.assignee, chat_id)
+        else:
+            await _ask_confirm(bot, c, p, chat_id)
 
 
 def _unknown_assignee(c: AppContainer, p: ProcessedTask) -> str | None:
@@ -117,4 +127,20 @@ async def _ask_clarify(bot: Bot, c: AppContainer, p: ProcessedTask, chat_id: int
         chat_id,
         tx.render_processed(p),
         reply_markup=kb.clarify_keyboard(pending.pid),
+    )
+
+
+async def _ask_pick_assignee(bot: Bot, c: AppContainer, p: ProcessedTask, chat_id: int) -> None:
+    """Коллизия имён: имя исполнителя носит несколько участников — уточняем, кто берётся."""
+    pending = c.pending.put(p, chat_id)
+    name = esc(p.task.assignee or "")
+    body = (
+        tx.render_processed(p)
+        + f"\n\n🙋 Имя «{name}» носят несколько участников. "
+        f"Кто именно берётся за задачу?"
+    )
+    await bot.send_message(
+        chat_id,
+        body,
+        reply_markup=kb.pick_assignee_keyboard(pending.pid, pending.assignee_options),
     )

@@ -34,3 +34,11 @@ class IntroCD(CallbackData, prefix="intro"):
     action: str
     pid: str = "-"
     name: str = ""
+
+
+class PickCD(CallbackData, prefix="pick"):
+    # pick   — выбрать конкретного тёзку как исполнителя задачи (pid, idx)
+    # cancel — отменить заведение задачи при коллизии имён
+    action: str
+    pid: str
+    idx: str = "-"

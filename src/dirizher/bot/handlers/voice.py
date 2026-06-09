@@ -70,9 +70,10 @@ async def on_voice(message: Message, c: AppContainer, state: FSMContext) -> None
 
     # Автор голосового — известный участник (чтобы вешать на него задачи).
     user = message.from_user
+    sender: TeamMember | None = None
     if user:
         known_before = c.team.knows(user.id)
-        c.team.register(TeamMember(user_id=user.id, username=user.username, full_name=user.full_name))
+        sender = c.team.register(TeamMember(user_id=user.id, username=user.username, full_name=user.full_name))
         if not known_before:
             c.persist()
 
@@ -113,7 +114,9 @@ async def on_voice(message: Message, c: AppContainer, state: FSMContext) -> None
             message_id=message.message_id,
             excerpt=text[:200],
         )
-        processed = await c.service.ingest(text, source, history=c.history.recent(chat_id, limit=12))
+        processed = await c.service.ingest(
+            text, source, history=c.history.recent(chat_id, limit=12), sender=sender
+        )
         if processed:
             await present(message.bot, c, processed, chat_id)
     except Exception:  # noqa: BLE001

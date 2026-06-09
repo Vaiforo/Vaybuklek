@@ -5,12 +5,42 @@ from __future__ import annotations
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
+from aiogram.types import BotCommand
 
 from ..container import AppContainer
 from ..logging_setup import get_logger
 from .handlers import build_root_router
 
 log = get_logger("dirizher.bot")
+
+# Меню команд (выпадает при вводе «/» в Telegram) — для удобной навигации.
+BOT_COMMANDS = [
+    BotCommand(command="help", description="🎼 Справка и возможности"),
+    BotCommand(command="tasks", description="📋 Мои открытые задачи"),
+    BotCommand(command="board", description="🗂️ Канбан-доска"),
+    BotCommand(command="mode", description="⚙️ Режим: auto / manual"),
+    BotCommand(command="report", description="🌙 Вечерний отчёт"),
+    BotCommand(command="remind", description="⏰ Проверить дедлайны"),
+    BotCommand(command="sync", description="🔄 Сверить память с доской"),
+    BotCommand(command="profile", description="👤 Профиль, XP и метрики"),
+    BotCommand(command="leaderboard", description="🏆 Рейтинг команды"),
+    BotCommand(command="notes", description="🗒️ Мои заметки"),
+    BotCommand(command="note", description="🗒️ Добавить заметку"),
+    BotCommand(command="kb", description="📚 База знаний"),
+    BotCommand(command="join", description="👋 Представиться боту"),
+    BotCommand(command="alias", description="🏷️ Мои прозвища (для тёзок)"),
+    BotCommand(command="whoami", description="🪞 Как я вас вижу"),
+    BotCommand(command="enroll_voice", description="🎙️ Запомнить мой голос"),
+    BotCommand(command="meeting_stop", description="⏹️ Остановить запись встречи"),
+]
+
+
+async def setup_bot_commands(bot: Bot) -> None:
+    """Зарегистрировать список команд, чтобы Telegram показывал меню по «/»."""
+    try:
+        await bot.set_my_commands(BOT_COMMANDS)
+    except Exception as e:  # noqa: BLE001
+        log.warning("Не удалось установить меню команд: %s", e)
 
 
 def build_dispatcher(container: AppContainer) -> Dispatcher:
@@ -38,6 +68,7 @@ async def run_polling(container: AppContainer) -> None:
             log.info("Старт: убрано призрачных задач из памяти: %d", ghosts)
     except Exception as e:  # noqa: BLE001
         log.warning("Старт: сверка с доской не удалась: %s", e)
+    await setup_bot_commands(bot)
     me = await bot.get_me()
     log.info("Бот @%s запущен (polling)", me.username)
     await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())

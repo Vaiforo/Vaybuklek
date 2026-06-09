@@ -6,7 +6,8 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from ..domain.enums import TaskStatus
-from .callback_data import BoardCD, ConfirmCD, ForgetCD, IntroCD, TaskCD
+from ..domain.models import TeamMember
+from .callback_data import BoardCD, ConfirmCD, ForgetCD, IntroCD, PickCD, TaskCD
 
 
 def _button(text: str, callback_data) -> InlineKeyboardButton:
@@ -29,6 +30,18 @@ def confirm_keyboard(pid: str, *, claim_name: str | None = None) -> InlineKeyboa
         kb.adjust(2, 1, 1)
     else:
         kb.adjust(2, 1)
+    return kb.as_markup()
+
+
+def pick_assignee_keyboard(pid: str, options: list[TeamMember]) -> InlineKeyboardMarkup:
+    """Кнопки выбора конкретного тёзки, когда имя исполнителя неоднозначно (#1)."""
+    kb = InlineKeyboardBuilder()
+    for idx, m in enumerate(options[:6]):
+        name = m.full_name or m.username or "участник"
+        label = f"{name} (@{m.username})" if m.username and m.username not in name else name
+        kb.button(text=f"👤 {label[:40]}", callback_data=PickCD(action="pick", pid=pid, idx=str(idx)))
+    kb.button(text="❌ Отмена", callback_data=PickCD(action="cancel", pid=pid))
+    kb.adjust(1)
     return kb.as_markup()
 
 
