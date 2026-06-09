@@ -78,3 +78,21 @@ def test_render_board_has_single_section_per_status():
     assert "<b>Статус:</b> К выполнению" in text
     assert "<b>Исполнитель:</b> Данила" in text
     assert "<b>Дедлайн:</b> без срока" in text
+
+
+def test_render_board_marks_past_deadline_as_overdue():
+    from datetime import date, timedelta
+
+    from dirizher.bot.text import render_board
+
+    text = render_board([
+        BoardCard(
+            id="late-1",
+            title="Просроченная задача",
+            status=TaskStatus.todo,
+            deadline=date.today() - timedelta(days=1),
+        )
+    ])
+
+    assert "<b>Просроченные</b> · 1" in text
+    assert "<b>Статус:</b> Просроченные" in text

@@ -64,6 +64,21 @@ class TaskRepository:
     def open_by_assignee(self, name: str) -> list[Task]:
         return [t for t in self.by_assignee(name) if t.status != TaskStatus.done]
 
+    @staticmethod
+    def in_chat(task: Task, chat_id: int | None) -> bool:
+        if chat_id is None:
+            return True
+        return any(source.chat_id == chat_id for source in task.sources)
+
+    def open_unassigned(self, *, chat_id: int | None = None) -> list[Task]:
+        return [
+            t for t in self.open()
+            if not _assignee_keys(t.assignee) and self.in_chat(t, chat_id)
+        ]
+
+    def open_by_assignee_in_chat(self, name: str, chat_id: int | None) -> list[Task]:
+        return [t for t in self.open_by_assignee(name) if self.in_chat(t, chat_id)]
+
     def due_on_or_before(self, day: date) -> list[Task]:
         return [
             t for t in self._tasks.values()

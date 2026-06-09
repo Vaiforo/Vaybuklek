@@ -222,6 +222,7 @@ async def on_forget(cb: CallbackQuery, callback_data: ForgetCD, c: AppContainer)
 _BOARD_STATUS = {
     "todo": TaskStatus.todo,
     "in_progress": TaskStatus.in_progress,
+    "overdue": TaskStatus.overdue,
     "done": TaskStatus.done,
 }
 
@@ -253,7 +254,7 @@ async def on_board_action(cb: CallbackQuery, callback_data: BoardCD, c: AppConta
         await cb.answer("Задача в корзине. Восстановите через /task_restore", show_alert=False)
         return
 
-    # Смена статуса (todo / in_progress / done)
+    # Смена статуса (todo / in_progress / overdue / done)
     if action in _BOARD_STATUS:
         status = _BOARD_STATUS[action]
         task = task_for_acl

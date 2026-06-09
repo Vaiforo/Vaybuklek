@@ -170,15 +170,20 @@ class TaskService:
                     elif member:
                         task.assignee = member.username or member.full_name or who
                         if member.member_team_ids:
-                            task.team_id = member.member_team_ids[0]
+                            # Один человек может состоять в нескольких командах.
+                            # В групповой постановке выбираем команду, которой руководит
+                            # автор поручения; иначе оставляем первый известный вариант.
+                            led_by_sender = set(sender.leader_team_ids if sender else [])
+                            task.team_id = next(
+                                (tid for tid in member.member_team_ids if tid in led_by_sender),
+                                member.member_team_ids[0],
+                            )
                 else:
                     # Исполнитель явно не назван и из контекста не восстановлен.
-                    # Берём за исполнителя автора сообщения (#2) — он сам себе ставит
-                    # задачу. Для встреч/симуляции (sender=None) оставляем как было.
-                    if sender is not None:
-                        task.assignee = sender.username or sender.full_name or None
-                        if sender.member_team_ids:
-                            task.team_id = sender.member_team_ids[0]
+                    # Создаём обезличенную задачу на доске без исполнителя: руководитель
+                    # позже сможет назначить её из группового чата.
+                    task.assignee = None
+                    task.team_id = None
 
                 if low_conf:
                     processed.append(ProcessedTask(task, Outcome.low_confidence, ambiguous=ambiguous))
