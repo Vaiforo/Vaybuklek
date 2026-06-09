@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re as _re
+from datetime import date
 from html import escape as esc
 
 from aiogram import Router
@@ -16,6 +17,7 @@ from ...permissions import (
     can_change_task_status,
     can_delete_task,
     can_manage_knowledge,
+    can_manage_task,
     can_view_member_tasks,
     is_superuser,
 )
@@ -33,7 +35,8 @@ HELP = """\
 <b>Работа с задачами</b>
 /mode auto|manual — авто-режим или подтверждение
 /board — канбан-доска
-/tasks — мои открытые задачи с кнопками статуса
+/tasks — мои открытые задачи (в личке все, в конфе только задачи этой конфы)
+/unassigned_tasks — обезличенные задачи без исполнителя
 /now [@user] — текущие задачи пользователя (руководители/суперюзеры могут смотреть всех)
 /digest — кто чем занят сейчас по всей команде
 /trash — корзина удалённых задач на 4 часа
@@ -143,19 +146,35 @@ def _report_chat_id(message: Message, c: AppContainer, member: TeamMember) -> in
     return message.chat.id
 
 
+def _task_scope_chat_id(message: Message) -> int | None:
+    """None means all personal tasks; group id means tasks created in this chat only."""
+    return None if _is_private(message) else message.chat.id
+
+
+def _task_in_scope(c: AppContainer, task, chat_id: int | None) -> bool:
+    return c.repo.in_chat(task, chat_id)
+
+
+def _card_in_scope(c: AppContainer, card, chat_id: int | None) -> bool:
+    if chat_id is None:
+        return True
+    task = c.repo.get_by_card(card.id)
+    return task is not None and _task_in_scope(c, task, chat_id)
+
+
 def _find_task(c: AppContainer, raw_id: str):
     raw_id = (raw_id or "").strip()
     return c.repo.get(raw_id) or c.repo.get_by_card(raw_id)
 
 
-def _tasks_for_member(c: AppContainer, member: TeamMember):
+def _tasks_for_member(c: AppContainer, member: TeamMember, *, chat_id: int | None = None):
     names = [member.username or "", member.full_name or "", *member.aliases]
     tasks = []
     seen: set[str] = set()
     for name in names:
         if not name:
             continue
-        for task in c.repo.open_by_assignee(name):
+        for task in c.repo.open_by_assignee_in_chat(name, chat_id):
             if task.id not in seen:
                 seen.add(task.id)
                 tasks.append(task)
@@ -198,6 +217,28 @@ def _render_trash(c: AppContainer) -> str:
             left = f"{seconds // 3600}ч {(seconds % 3600) // 60}м"
         lines.append(f"• <code>{esc(task.id)}</code> · <b>{esc(task.title)}</b>")
         lines.append(f"  👤 {esc(task.assignee or '—')} · удалится через: <b>{esc(left)}</b>")
+    return "\n".join(lines)
+
+
+def _render_unassigned(c: AppContainer, *, chat_id: int | None) -> str:
+    tasks = sorted(
+        c.repo.open_unassigned(chat_id=chat_id),
+        key=lambda t: (t.deadline is None, t.deadline or date.max, t.title.lower()),
+    )
+    scope = "во всех чатах" if chat_id is None else "в этой конфе"
+    if not tasks:
+        return f"📥 <b>Обезличенных задач {esc(scope)} нет</b>"
+    lines = [f"📥 <b>Обезличенные задачи {esc(scope)}</b>", "━━━━━━━━━━━━━━"]
+    for idx, task in enumerate(tasks[:30], start=1):
+        status = tx.effective_status(task)
+        team = c.team.get_team(task.team_id)
+        team_name = team.name if team else "—"
+        lines.append(f"{idx}. <code>{esc(task.id)}</code> · <b>{esc(task.title)}</b>")
+        lines.append(f"   🔸 {esc(status.label_ru)} · 👥 Команда: {esc(team_name)}")
+        lines.append(f"   📅 {esc(task.deadline_display())}")
+    hidden = len(tasks) - 30
+    if hidden > 0:
+        lines.append(f"… ещё {hidden}")
     return "\n".join(lines)
 
 
@@ -372,12 +413,16 @@ async def cmd_mode(message: Message, command: CommandObject, c: AppContainer) ->
 @router.message(Command("board"))
 async def cmd_board(message: Message, c: AppContainer) -> None:
     actor = _actor(message, c)
+    scope_chat_id = _task_scope_chat_id(message)
     cards = await c.board.list_cards()
     trashed_cards = {t.board_card_id for t in c.repo.trashed() if t.board_card_id}
-    cards = [card for card in cards if card.id not in trashed_cards]
+    cards = [card for card in cards if card.id not in trashed_cards and _card_in_scope(c, card, scope_chat_id)]
     if c.team.superuser_exists() and not is_superuser(actor):
-        allowed = set(actor.leader_team_ids)
-        cards = [card for card in cards if (task := c.repo.get_by_card(card.id)) is not None and task.team_id in allowed]
+        cards = [
+            card for card in cards
+            if (task := c.repo.get_by_card(card.id)) is not None
+            and can_manage_task(actor, task, c.team)
+        ]
         if not cards:
             return
     await message.answer(tx.render_board(cards))
@@ -445,11 +490,15 @@ async def send_my_tasks(message: Message, c: AppContainer, *, query_text: str = 
     if not can_view_member_tasks(actor, target):
         return
 
+    scope_chat_id = _task_scope_chat_id(message)
     cards = await c.board.list_cards()
     trashed_cards = {t.board_card_id for t in c.repo.trashed() if t.board_card_id}
     mine = [
         c_ for c_ in cards
-        if c_.id not in trashed_cards and c_.status is not TaskStatus.done and _card_belongs_to(c_, target)
+        if c_.id not in trashed_cards
+        and tx.effective_status(c_) is not TaskStatus.done
+        and _card_belongs_to(c_, target)
+        and _card_in_scope(c, c_, scope_chat_id)
     ]
 
     whose = "У вас" if is_self else f"У {label}"
@@ -514,6 +563,15 @@ async def cmd_task_restore(message: Message, command: CommandObject, c: AppConta
         return
     await c.service.restore_task(task)
     await message.answer(f"♻️ Восстановил задачу: «{esc(task.title)}».")
+
+
+
+@router.message(Command("unassigned_tasks", "unassigned", "no_assignee", "без_исполнителя"))
+async def cmd_unassigned_tasks(message: Message, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if c.team.superuser_exists() and not (is_superuser(actor) or actor.leader_team_ids):
+        return
+    await message.answer(_render_unassigned(c, chat_id=_task_scope_chat_id(message)))
 
 
 @router.message(Command("tasks"))

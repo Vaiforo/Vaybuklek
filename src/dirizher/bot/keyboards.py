@@ -89,6 +89,7 @@ def task_actions_keyboard(task_id: str) -> InlineKeyboardMarkup:
 _STATUS_BTN = {
     TaskStatus.todo: ("📋 К выполнению", "todo"),
     TaskStatus.in_progress: ("▶️ В работу", "in_progress"),
+    TaskStatus.overdue: ("🔥 Просрочено", "overdue"),
     TaskStatus.done: ("✅ Готово", "done"),
 }
 

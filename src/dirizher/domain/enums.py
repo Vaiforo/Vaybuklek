@@ -22,11 +22,17 @@ class Priority(str, Enum):
 class TaskStatus(str, Enum):
     todo = "todo"
     in_progress = "in_progress"
+    overdue = "overdue"
     done = "done"
 
     @property
     def label_ru(self) -> str:
-        return {"todo": "К выполнению", "in_progress": "В работе", "done": "Готово"}[self.value]
+        return {
+            "todo": "К выполнению",
+            "in_progress": "В работе",
+            "overdue": "Просроченные",
+            "done": "Готово",
+        }[self.value]
 
 
 class TaskSource(str, Enum):

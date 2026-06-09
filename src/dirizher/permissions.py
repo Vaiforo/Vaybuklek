@@ -38,13 +38,25 @@ def is_self(member: TeamMember | None, task: Task, team: TeamRegistry) -> bool:
     return False
 
 
-def task_team_id(task: Task, team: TeamRegistry) -> str | None:
+def task_team_ids(task: Task, team: TeamRegistry) -> list[str]:
     if task.team_id:
-        return task.team_id
+        return [task.team_id]
     member = team.resolve(task.assignee)
-    if member and member.member_team_ids:
-        return member.member_team_ids[0]
-    return None
+    if member:
+        return list(member.member_team_ids)
+    return []
+
+
+def task_team_id(task: Task, team: TeamRegistry) -> str | None:
+    ids = task_team_ids(task, team)
+    return ids[0] if ids else None
+
+
+def _can_manage_no_team(actor: TeamMember | None) -> bool:
+    # «Нет команды» — общий слой беседы вне созданных команд. Когда включены роли,
+    # управлять им могут руководители (любой team lead) и суперюзеры; рядовые
+    # участники не создают задачи в обход руководителя.
+    return bool(actor and actor.leader_team_ids)
 
 
 def can_create_task(actor: TeamMember | None, task: Task, team: TeamRegistry) -> bool:
@@ -52,8 +64,10 @@ def can_create_task(actor: TeamMember | None, task: Task, team: TeamRegistry) ->
         return True
     if is_superuser(actor):
         return True
-    tid = task_team_id(task, team)
-    return bool(actor and tid and tid in actor.leader_team_ids)
+    tids = task_team_ids(task, team)
+    if not tids:
+        return _can_manage_no_team(actor)
+    return bool(actor and any(tid in actor.leader_team_ids for tid in tids))
 
 
 def can_manage_task(actor: TeamMember | None, task: Task, team: TeamRegistry) -> bool:
@@ -61,8 +75,10 @@ def can_manage_task(actor: TeamMember | None, task: Task, team: TeamRegistry) ->
         return True
     if is_superuser(actor):
         return True
-    tid = task_team_id(task, team)
-    return bool(actor and tid and tid in actor.leader_team_ids)
+    tids = task_team_ids(task, team)
+    if not tids:
+        return _can_manage_no_team(actor)
+    return bool(actor and any(tid in actor.leader_team_ids for tid in tids))
 
 
 def can_change_task_status(actor: TeamMember | None, task: Task, team: TeamRegistry) -> bool:
