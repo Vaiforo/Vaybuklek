@@ -65,12 +65,38 @@ def test_registry_persist_roundtrip(tmp_path):
     assert again.identify([0.3, 0.7]) == "Стеф"
 
 
-def test_enroll_replaces_same_name(tmp_path):
+def test_voiceprints_isolated_by_model(tmp_path):
+    """Отпечатки другой модели не участвуют в матчинге (несравнимые векторы)."""
+    p = str(tmp_path / "vp.json")
+    old = SpeakerRegistry(path=p, threshold=0.8, model="pyannote:old")
+    old.enroll("Энди", [1.0, 0.0])
+    # Реестр на новой модели: прежний отпечаток виден в файле, но изолирован.
+    new = SpeakerRegistry(path=p, threshold=0.8, model="pyannote:new")
+    assert len(new) == 0  # опознавать пока некого
+    assert new.identify([1.0, 0.0]) is None  # старый вектор не матчится
+    new.enroll("Энди", [1.0, 0.0])  # перерегистрация на новой модели
+    assert new.identify([1.0, 0.0]) == "Энди"
+    # Старая модель по-прежнему видит свой отпечаток (файл общий).
+    assert SpeakerRegistry(path=p, threshold=0.8, model="pyannote:old").identify([1.0, 0.0]) == "Энди"
+
+
+def test_enroll_accumulates_samples_same_name(tmp_path):
     r = SpeakerRegistry(path=str(tmp_path / "vp.json"))
     r.enroll("Стеф", [1.0, 0.0])
-    r.enroll("Стеф", [0.0, 1.0])  # перезапись, не дубль
-    assert len(r) == 1
+    r.enroll("Стеф", [0.0, 1.0])  # второй образец того же человека (не дубль имени)
+    assert len(r) == 1  # один человек
+    assert r.sample_count("Стеф") == 2  # два образца голоса
+    # Матчинг берёт лучший образец → узнаём по любому из условий записи.
     assert r.identify([0.0, 1.0]) == "Стеф"
+    assert r.identify([1.0, 0.0]) == "Стеф"
+
+
+def test_enroll_replace_flag_overwrites(tmp_path):
+    r = SpeakerRegistry(path=str(tmp_path / "vp.json"))
+    r.enroll("Стеф", [1.0, 0.0])
+    r.enroll("Стеф", [0.0, 1.0], replace=True)  # заменить все прежние
+    assert r.sample_count("Стеф") == 1
+    assert r.identify([1.0, 0.0]) is None or r.identify([0.0, 1.0]) == "Стеф"
 
 
 def test_pipeline_identifies_two_speakers(tmp_path):

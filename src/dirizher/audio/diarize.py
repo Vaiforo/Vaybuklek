@@ -161,10 +161,11 @@ def _get_pyannote(hf_token: str, model: str = "pyannote/speaker-diarization-3.1"
         return _PYANNOTE_PIPELINE
     from pyannote.audio import Pipeline
 
-    from .pyannote_compat import load_pretrained
+    from .pyannote_compat import load_pretrained, move_to_cuda
 
     log.info("Загружаю pyannote 3.1 (диаризация встречи)…")
     _PYANNOTE_PIPELINE = load_pretrained(Pipeline.from_pretrained, model, hf_token)
+    move_to_cuda(_PYANNOTE_PIPELINE, "диаризатор pyannote")
     _PYANNOTE_KEY = hf_token
     return _PYANNOTE_PIPELINE
 

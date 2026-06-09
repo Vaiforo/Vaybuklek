@@ -73,6 +73,36 @@ def test_pipeline_resolves_known_speaker_by_voice(tmp_path):
     assert label_map["SPEAKER_01"] == "Speaker_1"  # неизвестный → аноним
 
 
+def test_learn_voice_from_meeting_enrolls_loopback_print(tmp_path):
+    """/who извлекает голос спикера из записи встречи и регистрирует его."""
+    from dirizher.audio.transcriber import Segment
+    from dirizher.bot.handlers.meeting import _learn_voice_from_meeting
+
+    reg = SpeakerRegistry(str(tmp_path / "vp.json"), threshold=0.5)
+
+    class FakeEmbedder:
+        def embed_turns(self, wav, turns):
+            label = turns[0][2]  # все реплики одного спикера
+            return {label: [0.0, 1.0]}
+
+    class C:
+        embedder = FakeEmbedder()
+        speakers = reg
+
+    segs = [
+        Segment(speaker="Speaker_1", text="привет", start=0.0, end=2.0),
+        Segment(speaker="Speaker_2", text="ага", start=2.0, end=4.0),
+        Segment(speaker="Speaker_1", text="ещё", start=4.0, end=6.0),
+    ]
+    meeting = {"path": "x.wav", "segments": segs}
+
+    count = _learn_voice_from_meeting(C(), meeting, "Speaker_1", "Энди")
+    assert count == 1
+    assert reg.identify([0.0, 1.0]) == "Энди"  # узнаём по loopback-отпечатку
+    # метки нет в записи → -1 (без обращения к эмбеддеру)
+    assert _learn_voice_from_meeting(C(), meeting, "Speaker_9", "Кто") == -1
+
+
 def test_pipeline_anonymous_without_embedder(tmp_path):
     from dirizher.audio.pipeline import WhisperPipeline
     from dirizher.config import AudioSettings

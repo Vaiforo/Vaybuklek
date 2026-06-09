@@ -14,7 +14,40 @@ from __future__ import annotations
 
 import os
 
+from ..logging_setup import get_logger
 from .decode import decode_mono16k
+
+log = get_logger("dirizher.audio.pyannote")
+
+
+def cuda_device():
+    """torch.device('cuda') если GPU доступен, иначе None. torch — мягкая зависимость."""
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            return torch.device("cuda")
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def move_to_cuda(obj, label: str) -> bool:
+    """Перенести pyannote Pipeline/Inference на GPU, если он есть. Возвращает успех.
+
+    pyannote по умолчанию считает на CPU — для длинных встреч это в разы медленнее.
+    Если CUDA/torch недоступны или .to() не поддерживается — тихо остаёмся на CPU.
+    """
+    dev = cuda_device()
+    if dev is None or obj is None:
+        return False
+    try:
+        obj.to(dev)
+        log.info("%s → GPU (cuda)", label)
+        return True
+    except Exception as e:  # noqa: BLE001
+        log.warning("%s остаётся на CPU (%s)", label, e)
+        return False
 
 
 def load_pretrained(from_pretrained, name: str, token: str):

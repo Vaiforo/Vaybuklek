@@ -41,13 +41,16 @@ class PyannoteEmbedder:
         if self._inference is None:
             from pyannote.audio import Inference, Model
 
-            from .pyannote_compat import load_pretrained
+            from .pyannote_compat import cuda_device, load_pretrained
 
             log.info("Загружаю модель эмбеддингов %s…", self._cfg.embedding_model)
             model = load_pretrained(
                 Model.from_pretrained, self._cfg.embedding_model, self._cfg.hf_token
             )
-            self._inference = Inference(model, window="whole")
+            dev = cuda_device()
+            self._inference = Inference(model, window="whole", device=dev)
+            if dev is not None:
+                log.info("Эмбеддер pyannote → GPU (cuda)")
         return self._inference
 
     def embed_file(self, wav_path: str) -> list[float]:
@@ -295,6 +298,20 @@ def _mean(vectors: list[list[float]]) -> list[float]:
         return vectors[0]
     length = len(vectors[0])
     return [sum(v[i] for v in vectors) / n for i in range(length)]
+
+
+def embedding_signature(cfg: AudioSettings) -> str:
+    """Идентификатор активного эмбеддера — каким он помечает отпечатки в реестре.
+
+    Векторы разных моделей несравнимы (разная размерность/пространство), поэтому
+    реестр сопоставляет голос только с отпечатками ТОЙ ЖЕ сигнатуры. Должен
+    совпадать с тем, что реально вернёт build_embedder для этого cfg.
+    """
+    if cfg.is_mock:
+        return ""
+    if cfg.backend == "local" and cfg.hf_token:
+        return f"pyannote:{cfg.embedding_model}"
+    return "signal"
 
 
 def build_embedder(cfg: AudioSettings) -> EmbeddingExtractor | None:

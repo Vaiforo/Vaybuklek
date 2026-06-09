@@ -111,13 +111,25 @@ class AudioSettings(BaseSettings):
     enabled: bool = False
     # Бэкенд распознавания: groq (Whisper через Groq API, без локальных моделей)
     # или local (faster-whisper + опц. pyannote — требует тяжёлых зависимостей).
-    backend: str = "groq"  # groq | local
-    whisper_model: str = "small"  # модель локального faster-whisper (backend=local)
+    backend: str = "local"  # groq | local
+    # Модель локального faster-whisper. large-v3 — максимум точности (русский),
+    # требует GPU/много RAM. Для слабого железа: small/medium/large-v3-turbo.
+    whisper_model: str = "large-v3"
+    # compute_type для faster-whisper. Пусто → авто: на CUDA int8_float16
+    # (оптимально для карт без tensor-ядер, напр. GTX 16xx), на CPU int8.
+    # Варианты: float16, int8_float16, int8, float32.
+    whisper_compute_type: str = ""
+    # Устройство: пусто → авто (CUDA если есть, иначе CPU). cuda | cpu.
+    whisper_device: str = ""
+    whisper_beam_size: int = 5  # ширина beam search (выше → точнее, но медленнее)
+    # Доп. термины/жаргон проекта для initial_prompt Whisper (имена команды
+    # подставляются автоматически из реестра голосов). Свободная фраза/перечисление.
+    whisper_prompt: str = ""
     groq_whisper_model: str = "whisper-large-v3-turbo"  # модель Groq Whisper
     groq_api_key: str = ""
     # Доп. ключи Groq через запятую — ротация при достижении лимита (429).
     groq_api_keys: str = ""
-    hf_token: str = ""  # опциональная диаризация pyannote (только backend=local)
+    hf_token: str = ""  # диаризация pyannote + нейро-эмбеддинги (только backend=local)
 
     # ── Встречи: захват системного звука (loopback) ───────────────────────────
     meeting_samplerate: int = 16000
@@ -127,13 +139,20 @@ class AudioSettings(BaseSettings):
     loopback_device: str = ""  # имя устройства вывода; пусто → колонки по умолчанию
 
     # ── Голосовые отпечатки (speaker embedding → авто-имя) ────────────────────
-    embedding_model: str = "pyannote/embedding"
+    # wespeaker-voxceleb-resnet34-LM — сильная нейромодель (ResNet34), её же
+    # использует внутри diarization-3.1; заметно лучше разделяет голоса, чем
+    # старая pyannote/embedding (SincNet). Нужен HF-токен (backend=local).
+    # При смене модели прежние отпечатки изолируются (другая размерность) —
+    # участников нужно перерегистрировать.
+    embedding_model: str = "pyannote/wespeaker-voxceleb-resnet34-LM"
     voiceprints_path: str = _data("voiceprints.json")
     voiceprint_threshold: float = 0.72
-    # Более строгий порог авто-именования спикеров НА ВСТРЕЧАХ: на смешанном
-    # loopback-потоке MFCC легко даёт ложный матч и вешает все реплики на один
-    # записанный голос. Ниже этого порога оставляем анонимный Speaker_N.
-    voiceprint_name_threshold: float = 0.82
+    # Порог авто-именования спикеров НА ВСТРЕЧАХ; ниже него — анонимный Speaker_N.
+    # Откалибровано под нейроэмбеддинги wespeaker: реальные участники на loopback
+    # дают cos ~0.47–0.60, разные люди — заметно ниже, поэтому 0.45 безопасно
+    # отделяет своих от чужих. /who (дообучение из встречи) ещё повышает запас.
+    # (Старое 0.82 годилось для иной шкалы и резало верные опознания.)
+    voiceprint_name_threshold: float = 0.45
     # Косинус-близость, выше которой двух «спикеров» pyannote считаем одним
     # человеком и схлопываем (лечит пере-сегментацию: 6 меток на 3 человек).
     # Ниже → агрессивнее объединяет (риск склеить разных), выше → меньше слияний.

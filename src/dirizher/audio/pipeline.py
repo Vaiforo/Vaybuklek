@@ -79,24 +79,33 @@ class WhisperPipeline:
             self._model = WhisperModel(self._cfg.whisper_model, device=device, compute_type=compute)
         return self._model
 
-    @staticmethod
-    def _pick_device() -> tuple[str, str]:
-        """CUDA-GPU если есть (float16), иначе CPU (int8). torch — мягкая зависимость."""
-        try:
-            import torch
+    def _pick_device(self) -> tuple[str, str]:
+        """Устройство и compute_type для faster-whisper.
 
-            if torch.cuda.is_available():
-                return "cuda", "float16"
-        except Exception:  # noqa: BLE001
-            pass
-        return "cpu", "int8"
+        По умолчанию авто: CUDA → int8_float16 (оптимально и для карт без
+        tensor-ядер, напр. GTX 16xx, и для RTX — быстрее float16 при той же
+        точности), CPU → int8. Любое можно переопределить из конфигурации
+        (DIRIZHER_AUDIO__WHISPER_DEVICE / __WHISPER_COMPUTE_TYPE).
+        """
+        device = self._cfg.whisper_device.strip().lower()
+        if not device:
+            try:
+                import torch
+
+                device = "cuda" if torch.cuda.is_available() else "cpu"
+            except Exception:  # noqa: BLE001
+                device = "cpu"
+        compute = self._cfg.whisper_compute_type.strip().lower()
+        if not compute:
+            compute = "int8_float16" if device == "cuda" else "int8"
+        return device, compute
 
     def _ensure_diarizer(self):
         if self._diarizer is None and self._cfg.hf_token:
             try:
                 from pyannote.audio import Pipeline
 
-                from .pyannote_compat import load_pretrained
+                from .pyannote_compat import load_pretrained, move_to_cuda
 
                 log.info("Загружаю pyannote 3.1 (диаризация)…")
                 self._diarizer = load_pretrained(
@@ -104,6 +113,7 @@ class WhisperPipeline:
                     "pyannote/speaker-diarization-3.1",
                     self._cfg.hf_token,
                 )
+                move_to_cuda(self._diarizer, "диаризатор pyannote")
             except Exception as e:  # noqa: BLE001
                 log.warning("Диаризация недоступна (%s) — продолжаю без неё", e)
                 self._diarizer = None
@@ -154,13 +164,44 @@ class WhisperPipeline:
     # ── распознавание ────────────────────────────────────────────────────────
     def _whisper_segments(self, file_path: str) -> list["_TimedSegment"]:
         model = self._ensure_model()
-        raw_segments, _info = model.transcribe(file_path, language="ru", vad_filter=True, beam_size=5)
+        raw_segments, _info = model.transcribe(
+            file_path,
+            language="ru",
+            beam_size=self._cfg.whisper_beam_size,
+            vad_filter=True,
+            # Минимальная пауза для среза реплики — диалог на встрече рваный,
+            # дефолт (2 с) склеивает разных людей в один сегмент.
+            vad_parameters={"min_silence_duration_ms": 500},
+            # Подсказка модели: имена команды + термины проекта → перестаёт
+            # коверкать собственные имена и жаргон.
+            initial_prompt=self._initial_prompt(),
+            # Fallback по температуре: если на температуре 0 уверенность низкая
+            # (компрессия/логпроб плохие), пробуем выше — меньше «пустых»/повторов.
+            temperature=[0.0, 0.2, 0.4, 0.6],
+            # На встречах контекст предыдущего текста провоцирует «залипание» и
+            # повторы — на длинных записях отключаем перенос контекста.
+            condition_on_previous_text=False,
+        )
         result: list[_TimedSegment] = []
         for s in raw_segments:
             text = s.text.strip()
             if text:
                 result.append(_TimedSegment(start=s.start, end=s.end, text=text))
         return result
+
+    def _initial_prompt(self) -> str | None:
+        """Подсказка Whisper: имена зарегистрированных голосов + термины проекта.
+
+        Имена команды и доменная лексика в initial_prompt заметно снижают ошибки
+        в собственных именах/жаргоне. Пусто → None (модель без подсказки).
+        """
+        parts: list[str] = []
+        if self._registry is not None and len(self._registry):
+            parts.append("Участники: " + ", ".join(self._registry.names()) + ".")
+        extra = self._cfg.whisper_prompt.strip()
+        if extra:
+            parts.append(extra)
+        return " ".join(parts) if parts else None
 
     # ── опциональная диаризация ──────────────────────────────────────────────
     def _diarize(self, file_path: str):

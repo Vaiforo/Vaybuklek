@@ -293,8 +293,11 @@ winget install Gyan.FFmpeg         # ffmpeg в PATH (для конвертаци
   `WHISPER_MODEL=large-v3-turbo` (≈качество large-v3, но быстрее/легче — лучший выбор для CPU).
 - Аудио-пакеты установлены (`pip install -e ".[audio]"`): faster-whisper 1.2.1, torch 2.12+cpu,
   pyannote.audio 4.0, soundfile, av. Модель large-v3-turbo предзагружена в кэш HF.
-- `WhisperPipeline._pick_device()` — авто: CUDA(float16) если есть, иначе CPU(int8).
-  Сейчас CPU (torch без CUDA) → распознавание идёт на процессоре (медленнее GPU, но работает).
+- `WhisperPipeline._pick_device()` — авто: CUDA(int8_float16) если есть, иначе CPU(int8);
+  переопределяется `WHISPER_DEVICE`/`WHISPER_COMPUTE_TYPE`. pyannote (диаризатор +
+  эмбеддер) тоже переносится на GPU через `pyannote_compat.move_to_cuda`.
+  Сейчас torch — CPU-сборка → всё считается на процессоре. Для GPU (есть GTX 1660
+  SUPER) поставить CUDA-сборку: `pip install torch --index-url https://download.pytorch.org/whl/cu124`.
 - **ffmpeg в PATH нет** — `_to_wav` пропускается, файл уходит прямо в whisper (декодит через
   PyAV/av, который установлен). Шумоподавление soundfile применяется если читает формат,
   иначе мягко пропускается. Для denoise oga→wav поставить ffmpeg: `winget install Gyan.FFmpeg`.
