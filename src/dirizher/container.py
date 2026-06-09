@@ -104,11 +104,14 @@ class AppContainer:
         log.info("Контейнер собран · режимы: %s", s.mode_banner())
 
     def _restore_state(self) -> None:
-        members, tasks = self.store.load()
+        members, tasks, teams = self.store.load_full()
         for m in members:
             self.team.register(m)
+        self.team.set_teams(teams)
         for t in tasks:
             self.repo.add(t)
+            if t.trashed_at is not None:
+                continue
             try:
                 self.memory.remember(t.id, t.dedup_text())
             except Exception:  # noqa: BLE001
@@ -117,7 +120,7 @@ class AppContainer:
     def persist(self) -> None:
         """Сохранить команду и задачи на диск (вызывается после изменений)."""
         try:
-            self.store.save(self.team.all(), self.repo.all())
+            self.store.save(self.team.all(), self.repo.all(), self.team.teams())
         except Exception as e:  # noqa: BLE001
             log.warning("Не удалось сохранить состояние: %s", e)
 

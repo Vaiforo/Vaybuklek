@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from enum import Enum
 import re as _re
 
@@ -149,6 +149,7 @@ class TaskService:
             for who in assignees:
                 task = Task.from_extracted(ex, source)
                 task.assignee = who
+                task.created_by_user_id = sender.user_id if sender else None
                 ambiguous: list[TeamMember] = []
 
                 if who:
@@ -168,12 +169,16 @@ class TaskService:
                         ambiguous = namesakes
                     elif member:
                         task.assignee = member.username or member.full_name or who
+                        if member.member_team_ids:
+                            task.team_id = member.member_team_ids[0]
                 else:
                     # Исполнитель явно не назван и из контекста не восстановлен.
                     # Берём за исполнителя автора сообщения (#2) — он сам себе ставит
                     # задачу. Для встреч/симуляции (sender=None) оставляем как было.
                     if sender is not None:
                         task.assignee = sender.username or sender.full_name or None
+                        if sender.member_team_ids:
+                            task.team_id = sender.member_team_ids[0]
 
                 if low_conf:
                     processed.append(ProcessedTask(task, Outcome.low_confidence, ambiguous=ambiguous))
@@ -261,6 +266,10 @@ class TaskService:
     async def create_on_board(self, task: Task) -> Task:
         """Создать карточку на доске и зафиксировать задачу в памяти."""
         task.status = TaskStatus.todo
+        if not task.team_id:
+            member = self.team.resolve(task.assignee)
+            if member and member.member_team_ids:
+                task.team_id = member.member_team_ids[0]
         # назначить карточку на реальных пользователей YouGile, если они привязаны
         task.assignee_yougile_ids = self._resolve_yougile_ids(task.assignee)
         card_id = await self.board.create_card(task)
@@ -419,7 +428,7 @@ class TaskService:
         return removed
 
     async def delete_task(self, task: Task) -> Task:
-        """Удалить задачу с доски и из памяти."""
+        """Удалить задачу с доски и из памяти окончательно."""
         if task.board_card_id:
             try:
                 await self.board.delete_card(task.board_card_id)
@@ -430,6 +439,54 @@ class TaskService:
         self.snapshot.add_decision(f"Удалена задача «{task.title}»")
         self._save_snapshot()
         return task
+
+    async def soft_delete_task(self, task: Task, *, hold_hours: int = 4) -> Task:
+        """Переместить назначенную задачу в корзину/backlog на время восстановления."""
+        now = datetime.now(timezone.utc)
+        if task.trashed_at is None:
+            task.restore_status = task.status
+        task.trashed_at = now
+        task.delete_after = now + timedelta(hours=hold_hours)
+        task.status = TaskStatus.todo
+        task.touch()
+        if task.board_card_id:
+            try:
+                await self.board.move_card(task.board_card_id, TaskStatus.todo)
+            except Exception as e:  # noqa: BLE001
+                log.warning("Не удалось переместить карточку %s в backlog: %s", task.board_card_id, e)
+        self.memory.forget(task.id)
+        self.snapshot.add_decision(f"Задача «{task.title}» перемещена в корзину на {hold_hours} ч")
+        self._save_snapshot()
+        return task
+
+    async def restore_task(self, task: Task) -> Task:
+        """Восстановить задачу из корзины до истечения срока окончательного удаления."""
+        status = task.restore_status or TaskStatus.todo
+        task.trashed_at = None
+        task.delete_after = None
+        task.restore_status = None
+        task.status = status
+        task.touch()
+        if task.board_card_id:
+            try:
+                if status == TaskStatus.done:
+                    await self.board.complete_card(task.board_card_id)
+                else:
+                    await self.board.move_card(task.board_card_id, status)
+            except Exception as e:  # noqa: BLE001
+                log.warning("Не удалось восстановить карточку %s: %s", task.board_card_id, e)
+        self.memory.remember(task.id, task.dedup_text())
+        self.snapshot.add_decision(f"Восстановлена задача «{task.title}»")
+        self._save_snapshot()
+        return task
+
+    async def purge_expired_trash(self, *, now: datetime | None = None) -> int:
+        """Окончательно удалить задачи, которые провели в корзине больше hold-периода."""
+        now = now or datetime.now(timezone.utc)
+        expired = [t for t in self.repo.trashed() if t.delete_after and t.delete_after <= now]
+        for task in expired:
+            await self.delete_task(task)
+        return len(expired)
 
     # ── Контроль нагрузки ────────────────────────────────────────────────────
     def workload_warning(self, assignee: str | None, *, max_open: int = 5, max_same_day: int = 3) -> str | None:

@@ -15,6 +15,7 @@ from ...domain.enums import TaskSource
 from ...domain.models import SourceRef, TeamMember
 from ...llm.prefilter import looks_taskish
 from ...logging_setup import get_logger
+from ...permissions import can_create_task
 import re
 
 from .. import task_commands
@@ -170,6 +171,7 @@ async def on_text(message: Message, c: AppContainer, state: FSMContext) -> None:
     )
     history = c.history.recent(chat_id, limit=10)
     processed = await c.service.ingest(text, source, history=history, sender=member)
+    processed = [p for p in processed if can_create_task(member, p.task, c.team)]
 
     if processed:
         await present(message.bot, c, processed, chat_id)

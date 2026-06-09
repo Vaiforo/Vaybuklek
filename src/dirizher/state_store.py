@@ -12,7 +12,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from .domain.models import Task, TeamMember
+from .domain.models import Task, Team, TeamMember
 from .logging_setup import get_logger
 
 log = get_logger("dirizher.state")
@@ -24,13 +24,17 @@ class StateStore:
         self._path.parent.mkdir(parents=True, exist_ok=True)
 
     def load(self) -> tuple[list[TeamMember], list[Task]]:
+        members, tasks, _teams = self.load_full()
+        return members, tasks
+
+    def load_full(self) -> tuple[list[TeamMember], list[Task], list[Team]]:
         if not self._path.exists():
-            return [], []
+            return [], [], []
         try:
             data = json.loads(self._path.read_text(encoding="utf-8"))
         except Exception as e:  # noqa: BLE001
             log.warning("Не удалось прочитать состояние (%s) — старт с чистого", e)
-            return [], []
+            return [], [], []
         members: list[TeamMember] = []
         for m in data.get("team", []):
             try:
@@ -43,13 +47,20 @@ class StateStore:
                 tasks.append(Task(**t))
             except Exception as e:  # noqa: BLE001
                 log.warning("Пропущена задача из состояния: %s", e)
-        log.info("Состояние загружено: участников %d, задач %d", len(members), len(tasks))
-        return members, tasks
+        teams: list[Team] = []
+        for tm in data.get("teams", []):
+            try:
+                teams.append(Team(**tm))
+            except Exception as e:  # noqa: BLE001
+                log.warning("Пропущена команда из состояния: %s", e)
+        log.info("Состояние загружено: участников %d, задач %d, команд %d", len(members), len(tasks), len(teams))
+        return members, tasks, teams
 
-    def save(self, members: list[TeamMember], tasks: list[Task]) -> None:
+    def save(self, members: list[TeamMember], tasks: list[Task], teams: list[Team] | None = None) -> None:
         data = {
             "team": [m.model_dump(mode="json") for m in members],
             "tasks": [t.model_dump(mode="json") for t in tasks],
+            "teams": [t.model_dump(mode="json") for t in (teams or [])],
         }
         payload = json.dumps(data, ensure_ascii=False, indent=2)
         # атомарно: пишем во временный файл и заменяем — не оставляем «битый» файл

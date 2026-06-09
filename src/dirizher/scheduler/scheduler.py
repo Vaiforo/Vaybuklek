@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
+from apscheduler.triggers.interval import IntervalTrigger
 
 from ..container import AppContainer
 from ..logging_setup import get_logger
@@ -16,6 +17,7 @@ from .jobs import (
     run_leaderboard_post,
     run_morning_digest,
     run_reminders,
+    run_trash_purge,
 )
 
 log = get_logger("dirizher.scheduler")
@@ -45,6 +47,13 @@ def build_scheduler(c: AppContainer) -> AsyncIOScheduler:
         CronTrigger.from_crontab(sch.evening_reconcile_cron, timezone=tz),
         args=[c],
         id="evening_reconciliation",
+        replace_existing=True,
+    )
+    sched.add_job(
+        run_trash_purge,
+        IntervalTrigger(minutes=15, timezone=tz),
+        args=[c],
+        id="trash_purge",
         replace_existing=True,
     )
     sched.add_job(

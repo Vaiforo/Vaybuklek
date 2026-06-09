@@ -20,6 +20,8 @@ from aiogram.types import Message
 from ..container import AppContainer
 from ..domain.enums import TaskStatus
 from ..logging_setup import get_logger
+from ..domain.models import TeamMember
+from ..permissions import can_change_task_status, can_delete_task, is_superuser
 
 log = get_logger("dirizher.bot.taskcmd")
 
@@ -83,10 +85,14 @@ def _find_task(c: AppContainer, cmd: TaskCommand):
 async def handle(message: Message, c: AppContainer, cmd: TaskCommand) -> bool:
     """Выполнить команду. Вернуть True, если обработали (не извлекать задачу)."""
     task = _find_task(c, cmd)
+    user = message.from_user
+    actor = c.team.register(TeamMember(user_id=user.id, username=user.username, full_name=user.full_name)) if user else None
 
     # Задачи нет в памяти (например, после перезапуска), но есть UUID карточки —
-    # действуем напрямую по карточке на доске.
+    # действуем напрямую по карточке на доске только для суперюзера при включённых ролях.
     if task is None and cmd.card_id:
+        if c.team.superuser_exists() and not is_superuser(actor):
+            return True
         try:
             if cmd.action == "done":
                 await c.board.complete_card(cmd.card_id)
@@ -95,8 +101,9 @@ async def handle(message: Message, c: AppContainer, cmd: TaskCommand) -> bool:
                 await c.board.move_card(cmd.card_id, TaskStatus.in_progress)
                 await message.answer(f"▶️ Перевёл в работу <code>{esc(cmd.card_id)}</code>.")
             elif cmd.action == "delete":
-                await c.board.delete_card(cmd.card_id)
-                await message.answer(f"🗑️ Удалил задачу <code>{esc(cmd.card_id)}</code>.")
+                await message.answer(
+                    "Не могу удалить карточку без корзины: сначала синхронизируйте память с доской через /sync."
+                )
             return True
         except Exception as e:  # noqa: BLE001
             log.warning("Команда по карточке %s не удалась: %s", cmd.card_id, e)
@@ -108,15 +115,25 @@ async def handle(message: Message, c: AppContainer, cmd: TaskCommand) -> bool:
         await message.answer("Не понял, какую задачу. Укажите её ID или ключевые слова из названия.")
         return True
 
+    if task.trashed_at is not None:
+        await message.answer("Задача в корзине. Восстановите её через /task_restore, если нужно вернуть в работу.")
+        return True
+
     if cmd.action == "done":
+        if not can_change_task_status(actor, task, c.team):
+            return True
         await c.service.set_status(task, TaskStatus.done)
         await message.answer(f"✅ Готово: «{esc(task.title)}».")
         for line in c.game.complete(task):
             await message.answer(line)
     elif cmd.action == "start":
+        if not can_change_task_status(actor, task, c.team):
+            return True
         await c.service.set_status(task, TaskStatus.in_progress)
         await message.answer(f"▶️ В работе: «{esc(task.title)}».")
     elif cmd.action == "delete":
-        await c.service.delete_task(task)
-        await message.answer(f"🗑️ Удалил: «{esc(task.title)}».")
+        if not can_delete_task(actor, task, c.team):
+            return True
+        await c.service.soft_delete_task(task)
+        await message.answer(f"🗑️ Переместил в корзину на 4 часа: «{esc(task.title)}».")
     return True
