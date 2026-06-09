@@ -54,9 +54,10 @@ def task_team_id(task: Task, team: TeamRegistry) -> str | None:
 
 def _can_manage_no_team(actor: TeamMember | None) -> bool:
     # «Нет команды» — общий слой беседы вне созданных команд. Когда включены роли,
-    # управлять им могут руководители (любой team lead) и суперюзеры; рядовые
-    # участники не создают задачи в обход руководителя.
-    return bool(actor and actor.leader_team_ids)
+    # управлять им может только отдельный руководитель без команды (и суперюзер
+    # выше по стеку проверок). Руководитель обычной команды не получает эти права
+    # автоматически, чтобы не назначать задачи людям вне своей команды.
+    return bool(actor and actor.is_no_team_manager)
 
 
 def can_create_task(actor: TeamMember | None, task: Task, team: TeamRegistry) -> bool:
@@ -95,7 +96,7 @@ def can_view_member_tasks(actor: TeamMember | None, target: TeamMember | None) -
         return False
     if actor.user_id is not None and actor.user_id == target.user_id:
         return True
-    return is_superuser(actor) or bool(actor.leader_team_ids)
+    return is_superuser(actor) or bool(actor.leader_team_ids) or bool(actor.is_no_team_manager)
 
 
 def can_manage_knowledge(actor: TeamMember | None, author_user_id: int | None, knowledge_team_id: str | None) -> bool:

@@ -86,7 +86,8 @@ def _admin_help() -> str:
 /grant_superuser @user — назначить суперюзера
 /team create Название — создать команду
 /team add_member TEAM @user — добавить подчинённого
-/team add_manager TEAM @user — назначить руководителя
+/team add_manager TEAM @user — назначить руководителя команды
+/no_team_manager @user — назначить руководителя без команды (команда: —)
 /team list — список команд
 /board_clear confirm — очистить канбан-доску
 /reset_bot confirm — полностью очистить бота
@@ -279,6 +280,26 @@ async def cmd_grant_superuser(message: Message, command: CommandObject, c: AppCo
     await message.answer(f"👑 Суперюзер назначен: {target.mention()}.")
 
 
+@router.message(Command("no_team_manager", "manager_no_team", "make_no_team_manager"))
+async def cmd_no_team_manager(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    target = _resolve_mentioned_member(c, message, (command.args or "").strip())
+    if target is None:
+        await message.answer(
+            "Формат: <code>/no_team_manager @username</code> "
+            "или ответьте командой на сообщение участника."
+        )
+        return
+    c.team.grant_no_team_manager(target)
+    c.persist()
+    await message.answer(
+        f"🧭 Руководитель без команды назначен: {target.mention()}. "
+        "В графе «Команда» у него остаётся <b>—</b>."
+    )
+
+
 @router.message(Command("team", "teams"))
 async def cmd_team(message: Message, command: CommandObject, c: AppContainer) -> None:
     actor = _actor(message, c)
@@ -287,10 +308,17 @@ async def cmd_team(message: Message, command: CommandObject, c: AppContainer) ->
     action_l = action.lower()
     if action_l in {"list", "", "список"}:
         teams = c.team.teams()
-        if not teams:
+        no_team_managers = [m for m in c.team.all() if m.is_no_team_manager]
+        if not teams and not no_team_managers:
             await message.answer("Команды ещё не созданы. Суперюзер может создать: <code>/team create Название</code>")
             return
         lines = ["👥 <b>Команды</b>"]
+        if no_team_managers:
+            lines.append(
+                "• <b>Нет команды</b> · рук.: "
+                + ", ".join(m.mention() for m in no_team_managers)
+                + " · команда: —"
+            )
         for t in teams:
             managers = [c.team.get_by_user_id(uid) for uid in t.manager_user_ids]
             members = [c.team.get_by_user_id(uid) for uid in t.member_user_ids]
@@ -311,6 +339,18 @@ async def cmd_team(message: Message, command: CommandObject, c: AppContainer) ->
         team = c.team.add_team(Team(name=name[:80]))
         c.persist()
         await message.answer(f"👥 Команда создана: <b>{esc(team.name)}</b> · <code>{team.id}</code>")
+        return
+    if action_l in {"add_no_team_manager", "no_team_manager", "manager_no_team", "руководитель_без_команды"}:
+        target = _resolve_mentioned_member(c, message, rest.strip())
+        if target is None:
+            await message.answer("Формат: <code>/team add_no_team_manager @username</code>")
+            return
+        c.team.grant_no_team_manager(target)
+        c.persist()
+        await message.answer(
+            f"🧭 Руководитель без команды назначен: {target.mention()}. "
+            "В графе «Команда» у него остаётся <b>—</b>."
+        )
         return
     if action_l in {"add_manager", "manager", "lead", "leader", "руководитель"}:
         raw_team, _, raw_user = rest.partition(" ")
@@ -334,7 +374,7 @@ async def cmd_team(message: Message, command: CommandObject, c: AppContainer) ->
         c.persist()
         await message.answer(f"👤 Участник добавлен в <b>{esc(team.name)}</b>: {target.mention()}.")
         return
-    await message.answer("Команды: <code>/team create</code>, <code>/team add_member</code>, <code>/team add_manager</code>, <code>/team list</code>")
+    await message.answer("Команды: <code>/team create</code>, <code>/team add_member</code>, <code>/team add_manager</code>, <code>/team add_no_team_manager</code>, <code>/team list</code>")
 
 
 @router.message(Command("manager", "make_manager"))
@@ -537,7 +577,7 @@ async def cmd_now(message: Message, command: CommandObject, c: AppContainer) -> 
 @router.message(Command("digest", "current_digest", "занятость"))
 async def cmd_current_digest(message: Message, c: AppContainer) -> None:
     actor = _actor(message, c)
-    if not (is_superuser(actor) or actor.leader_team_ids):
+    if not (is_superuser(actor) or actor.leader_team_ids or actor.is_no_team_manager):
         return
     await message.answer(_render_current_digest(c))
 
@@ -545,7 +585,7 @@ async def cmd_current_digest(message: Message, c: AppContainer) -> None:
 @router.message(Command("trash", "deleted_tasks", "корзина"))
 async def cmd_trash(message: Message, c: AppContainer) -> None:
     actor = _actor(message, c)
-    if not (is_superuser(actor) or actor.leader_team_ids):
+    if not (is_superuser(actor) or actor.leader_team_ids or actor.is_no_team_manager):
         return
     await c.service.purge_expired_trash()
     await message.answer(_render_trash(c))
@@ -569,7 +609,7 @@ async def cmd_task_restore(message: Message, command: CommandObject, c: AppConta
 @router.message(Command("unassigned_tasks", "unassigned", "no_assignee", "без_исполнителя"))
 async def cmd_unassigned_tasks(message: Message, c: AppContainer) -> None:
     actor = _actor(message, c)
-    if c.team.superuser_exists() and not (is_superuser(actor) or actor.leader_team_ids):
+    if c.team.superuser_exists() and not (is_superuser(actor) or actor.leader_team_ids or actor.is_no_team_manager):
         return
     await message.answer(_render_unassigned(c, chat_id=_task_scope_chat_id(message)))
 
@@ -935,10 +975,18 @@ async def cmd_forget(message: Message, c: AppContainer) -> None:
 async def cmd_whoami(message: Message, c: AppContainer) -> None:
     member = _member_from_message(message, c)
     dm = "включены" if member.dm_chat_id else "не включены"
+    teams = [c.team.get_team(tid) for tid in member.member_team_ids]
+    team_names = ", ".join(t.name for t in teams if t) or "—"
+    managed_teams = [c.team.get_team(tid) for tid in member.leader_team_ids]
+    managed_names = ", ".join(t.name for t in managed_teams if t)
+    if member.is_no_team_manager:
+        managed_names = ", ".join([name for name in [managed_names, "нет команды"] if name])
     await message.answer(
         "👤 <b>Как я вас вижу</b>\n"
         f"Имя: {esc(member.full_name or '—')}\n"
         f"Username: @{esc(member.username or '—')}\n"
         f"Алиасы: {esc(', '.join(member.aliases) or '—')}\n"
+        f"Команда: {esc(team_names)}\n"
+        f"Руководит: {esc(managed_names or '—')}\n"
         f"Личные уведомления: {dm}"
     )

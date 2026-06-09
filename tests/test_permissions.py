@@ -180,16 +180,23 @@ def test_repository_filters_unassigned_and_assigned_tasks_by_chat():
     assert repo.open_by_assignee_in_chat("alice", 200) == []
 
 
-def test_leader_can_create_and_manage_no_team_tasks_when_roles_enabled():
+def test_no_team_manager_can_create_and_manage_no_team_tasks_when_roles_enabled():
     registry = TeamRegistry()
     registry.grant_superuser(TeamMember(user_id=1, username="root"))
     team = registry.add_team(Team(name="Dev"))
-    leader = registry.assign_member_to_team(TeamMember(user_id=2, username="lead"), team, leader=True)
+    team_leader = registry.assign_member_to_team(TeamMember(user_id=2, username="lead"), team, leader=True)
+    no_team_manager = registry.grant_no_team_manager(TeamMember(user_id=4, username="notm"))
     subordinate = registry.assign_member_to_team(TeamMember(user_id=3, username="worker"), team)
     no_team_task = Task(title="Без исполнителя")
 
-    assert can_create_task(leader, no_team_task, registry) is True
-    assert can_delete_task(leader, no_team_task, registry) is True
+    assert no_team_manager.is_no_team_manager is True
+    assert no_team_manager.member_team_ids == []
+    assert no_team_manager.leader_team_ids == []
+    assert can_create_task(no_team_manager, no_team_task, registry) is True
+    assert can_delete_task(no_team_manager, no_team_task, registry) is True
+    assert can_view_member_tasks(no_team_manager, subordinate) is True
+    assert can_create_task(team_leader, no_team_task, registry) is False
+    assert can_delete_task(team_leader, no_team_task, registry) is False
     assert can_create_task(subordinate, no_team_task, registry) is False
     assert can_delete_task(subordinate, no_team_task, registry) is False
 
@@ -207,3 +214,20 @@ def test_permissions_consider_all_member_teams_when_task_team_missing():
 
     assert can_create_task(second_leader, task_without_cached_team, registry) is True
     assert can_delete_task(second_leader, task_without_cached_team, registry) is True
+
+
+def test_no_team_manager_flag_is_persisted(tmp_path):
+    registry = TeamRegistry()
+    manager = registry.grant_no_team_manager(TeamMember(user_id=10, username="notm"))
+    task = Task(title="No team task")
+
+    store = StateStore(str(tmp_path / "state.json"))
+    store.save(registry.all(), [task], registry.teams())
+    members, tasks, teams = store.load_full()
+
+    assert members[0].username == manager.username
+    assert members[0].is_no_team_manager is True
+    assert members[0].member_team_ids == []
+    assert members[0].leader_team_ids == []
+    assert tasks[0].team_id is None
+    assert teams == []
