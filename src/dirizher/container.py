@@ -47,6 +47,30 @@ class ModeStore:
         self._by_chat[chat_id] = value
 
 
+class MeetingSourceStore:
+    """Источник звука встреч на чат: `telemost` (бот входит сам) или `loopback`.
+
+    Дефолт берётся из конфига (`DIRIZHER_AUDIO__MEETING_SOURCE`); командой
+    /meeting_source значение переопределяется для конкретного чата.
+    """
+
+    VALID = ("telemost", "loopback")
+
+    def __init__(self, default: str = "telemost") -> None:
+        self._default = default if default in self.VALID else "loopback"
+        self._by_chat: dict[int, str] = {}
+
+    def get(self, chat_id: int) -> str:
+        return self._by_chat.get(chat_id, self._default)
+
+    def set(self, chat_id: int, value: str) -> bool:
+        value = str(value).strip().lower()
+        if value not in self.VALID:
+            return False
+        self._by_chat[chat_id] = value
+        return True
+
+
 class AppContainer:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
@@ -99,11 +123,12 @@ class AppContainer:
         # Геймификация (XP/уровни/ачивки/лидерборд, п.10) — начисление при закрытии задач.
         self.game = GamificationService(GameStore(s.memory.game_path), self.team)
         self.reconciliation = ReconciliationService(
-            self.repo, self.team, self.service, game=self.game
+            self.repo, self.team, self.service, game=self.game, memory=self.memory
         )
         self.meeting = MeetingService(self.service)
         self.cabinet = PersonalCabinet(self.repo, self.team)
         self.mode = ModeStore(default_auto=False)
+        self.meeting_source = MeetingSourceStore(default=s.audio.meeting_source_norm)
         self.pending = PendingStore()
         self.history = ChatHistory()
 

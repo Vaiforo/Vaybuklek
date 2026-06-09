@@ -72,6 +72,9 @@ class _LexicalBackend:
                 best = DuplicateMatch(tid, round(score, 3))
         return best
 
+    def similarity(self, a: str, b: str) -> float:
+        return self._cosine(self._vec(a), self._vec(b))
+
 
 class _ChromaBackend:
     """Семантический бэкенд на ChromaDB."""
@@ -85,6 +88,7 @@ class _ChromaBackend:
         self._col = self._client.get_or_create_collection(
             "dirizher_tasks", metadata={"hnsw:space": "cosine"}
         )
+        self._ef = None  # ленивая embedding-функция для pairwise_similarity
 
     def add(self, task_id: str, text: str) -> None:
         self._col.upsert(ids=[task_id], documents=[text])
@@ -107,6 +111,18 @@ class _ChromaBackend:
         if score >= threshold:
             return DuplicateMatch(ids[0], round(score, 3))
         return None
+
+    def similarity(self, a: str, b: str) -> float:
+        """Семантическая близость двух произвольных строк (та же модель эмбеддингов)."""
+        if self._ef is None:
+            from chromadb.utils import embedding_functions
+
+            self._ef = embedding_functions.DefaultEmbeddingFunction()
+        va, vb = self._ef([a, b])
+        dot = sum(x * y for x, y in zip(va, vb))
+        na = math.sqrt(sum(x * x for x in va))
+        nb = math.sqrt(sum(y * y for y in vb))
+        return dot / (na * nb) if na and nb else 0.0
 
 
 class TaskMemory:
@@ -138,3 +154,16 @@ class TaskMemory:
 
     def forget(self, task_id: str) -> None:
         self._backend.remove(task_id)
+
+    def pairwise_similarity(self, a: str, b: str) -> float:
+        """Близость двух строк (0..1). Используется для матчинга отчёт↔задача.
+
+        Семантика при backend=chroma; на lexical — косинус по токенам. Любой сбой
+        (нет модели/сети) → 0.0, чтобы не ронять сверку."""
+        if not a or not b:
+            return 0.0
+        try:
+            return float(self._backend.similarity(a, b))
+        except Exception as e:  # noqa: BLE001
+            log.warning("Семантическая близость недоступна (%s)", e)
+            return 0.0

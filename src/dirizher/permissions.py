@@ -91,9 +91,17 @@ def can_delete_task(actor: TeamMember | None, task: Task, team: TeamRegistry) ->
 
 
 
+# Ограничение на просмотр чужих задач. Сейчас ОТКЛЮЧЕНО: через /tasks <тег>
+# любой участник может посмотреть задачи любого пользователя. Чтобы вернуть
+# роли (только сам/руководитель/суперюзер), поставьте False.
+ALLOW_VIEW_ANY_MEMBER_TASKS = True
+
+
 def can_view_member_tasks(actor: TeamMember | None, target: TeamMember | None) -> bool:
     if actor is None or target is None:
         return False
+    if ALLOW_VIEW_ANY_MEMBER_TASKS:
+        return True
     if actor.user_id is not None and actor.user_id == target.user_id:
         return True
     return is_superuser(actor) or bool(actor.leader_team_ids) or bool(actor.is_no_team_manager)

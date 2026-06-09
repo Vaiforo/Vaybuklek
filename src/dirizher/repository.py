@@ -230,9 +230,33 @@ class TeamRegistry:
         return [c.lower() for c in cands if c]
 
     def resolve(self, name: str | None) -> TeamMember | None:
-        """Найти участника по username/имени/алиасу (регистронезависимо). Первый матч."""
+        """Найти участника по username/имени/алиасу (регистронезависимо). Первый матч.
+
+        Если точного совпадения нет — пробуем нечёткое (опечатки: «Максмм»→«Максим»).
+        Порог высокий (0.84), чтобы не приклеить нового человека к существующему.
+        """
         matches = self.resolve_all(name)
-        return matches[0] if matches else None
+        if matches:
+            return matches[0]
+        return self._fuzzy_resolve(name)
+
+    def _fuzzy_resolve(self, name: str | None, *, cutoff: float = 0.80) -> TeamMember | None:
+        if not name:
+            return None
+        key = name.lstrip("@").strip().lower()
+        if len(key) < 3:  # на коротких именах фуззи опасен
+            return None
+        from difflib import SequenceMatcher
+
+        best: TeamMember | None = None
+        best_score = cutoff
+        for m in self.all():
+            for cand in self._candidates(m):
+                score = SequenceMatcher(None, key, cand).ratio()
+                if score >= best_score:
+                    best_score = score
+                    best = m
+        return best
 
     def resolve_all(self, name: str | None) -> list[TeamMember]:
         """Все участники, подходящие под имя/алиас (для разрешения тёзок, #6)."""

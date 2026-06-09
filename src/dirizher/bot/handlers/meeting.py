@@ -42,6 +42,11 @@ def has_telemost_link(text: str) -> bool:
     return bool(_TELEMOST_RE.search(text or ""))
 
 
+def telemost_link(text: str) -> str | None:
+    m = _TELEMOST_RE.search(text or "")
+    return m.group(0) if m else None
+
+
 def _diarize_segments(c: AppContainer, path: str, segments: list) -> None:
     """Синхронно разметить говорящих: сначала pyannote (если есть HF-токен),
 
@@ -193,7 +198,7 @@ async def on_telemost_link(message: Message, c: AppContainer) -> None:
         await message.answer("🔴 Уже пишу эту встречу. Остановить — /meeting_stop.")
         return
 
-    from ...audio.recorder import MeetingRecorder, loopback_available
+    from ...audio.recorder import MeetingRecorder, TelemostRecorder, loopback_available
 
     if not loopback_available():
         await message.answer(
@@ -204,21 +209,84 @@ async def on_telemost_link(message: Message, c: AppContainer) -> None:
 
     loop = asyncio.get_running_loop()
     bot = message.bot
+    audio = c.settings.audio
 
     async def on_finish(path: str | None, reason: str) -> None:
         await _process_recording(c, bot, chat_id, path, reason)
 
-    rec = MeetingRecorder(c.settings.audio, on_finish, loop)
+    source = c.meeting_source.get(chat_id)
+    rec: MeetingRecorder
+    via = "системный звук"
+    if source == "telemost":
+        from ...audio.telemost import playwright_available
+
+        link = telemost_link(message.text) or ""
+        if not playwright_available():
+            await message.answer(
+                "🌐 Источник <b>Телемост</b> требует браузер Playwright "
+                "(<code>pip install playwright</code> + <code>playwright install chromium</code>).\n"
+                "Пока пишу <b>системный звук</b> — подключитесь к звонку на этой машине."
+            )
+            rec = MeetingRecorder(audio, on_finish, loop)
+        else:
+            await message.answer(
+                "🌐 Захожу в звонок Телемоста как <b>" + esc(audio.telemost_join_name) + "</b>…"
+            )
+            rec = TelemostRecorder(link, audio, on_finish, loop)
+            via = "Телемост (бот в звонке)"
+    else:
+        rec = MeetingRecorder(audio, on_finish, loop)
+
     if not rec.start():
-        await message.answer("Не нашёл устройство для захвата звука 😕 Проверьте колонки/драйвер.")
-        return
+        # Если бот не смог войти в Телемост — мягко откатываемся на системный звук.
+        if isinstance(rec, TelemostRecorder):
+            await message.answer(
+                "⚠️ Не удалось войти в звонок автоматически. "
+                "Пишу <b>системный звук</b> — подключитесь к встрече на этой машине вручную."
+            )
+            rec = MeetingRecorder(audio, on_finish, loop)
+            via = "системный звук"
+            if not rec.start():
+                await message.answer("Не нашёл устройство для захвата звука 😕 Проверьте колонки/драйвер.")
+                return
+        else:
+            await message.answer("Не нашёл устройство для захвата звука 😕 Проверьте колонки/драйвер.")
+            return
     c.active_meetings[chat_id] = rec
     mins = c.settings.audio.meeting_silence_seconds // 60
     await message.answer(
-        "🔴 <b>Пишу встречу</b> (системный звук).\n"
+        f"🔴 <b>Пишу встречу</b> ({via}).\n"
         f"Остановлю сам после тишины (~{mins} мин) или командой /meeting_stop.\n"
         "Когда закончу — пришлю саммари и вынесу задачи на доску."
     )
+
+
+_SOURCE_LABEL = {
+    "telemost": "🌐 Подключение к Телемосту (бот сам входит в звонок)",
+    "loopback": "🎧 Запись системного звука (машина уже в звонке)",
+}
+
+
+@router.message(Command("meeting_source"))
+async def cmd_meeting_source(message: Message, c: AppContainer) -> None:
+    """`/meeting_source [telemost|loopback]` — показать/сменить источник звука встреч."""
+    parts = (message.text or "").split(maxsplit=1)
+    chat_id = message.chat.id
+    if len(parts) < 2 or not parts[1].strip():
+        current = c.meeting_source.get(chat_id)
+        await message.answer(
+            "🎙️ <b>Источник звука встреч</b>\n"
+            f"Сейчас: {_SOURCE_LABEL[current]}\n\n"
+            "Сменить:\n"
+            "• <code>/meeting_source telemost</code> — бот заходит в звонок по ссылке\n"
+            "• <code>/meeting_source loopback</code> — пишем системный звук машины"
+        )
+        return
+    value = parts[1].strip().lower()
+    if not c.meeting_source.set(chat_id, value):
+        await message.answer("Не понял источник. Варианты: <code>telemost</code> или <code>loopback</code>.")
+        return
+    await message.answer(f"✅ Источник звука встреч: {_SOURCE_LABEL[c.meeting_source.get(chat_id)]}")
 
 
 @router.message(Command("meeting_stop"))

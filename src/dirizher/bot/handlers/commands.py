@@ -26,72 +26,97 @@ from .. import text as tx
 
 router = Router(name="commands")
 
-HELP = """\
-🎼 <b>Дирижёр</b> — AI-помощник project-менеджера.
+DIVIDER = tx.DIVIDER
 
-<b>Работа с задачами</b>
-/mode auto|manual
-/board
-/tasks [@user]
-/unassigned_tasks
-/digest
-/trash
-/task_restore
-/task_edit
-/task_del
-/report
-/reconcile
-/remind
-/sync
-/help_meetings
-/help_profile
-/help_kb
-/help_admin
+HELP = f"""\
+🎼 <b>Дирижёр</b> — AI-помощник проджект-менеджера
+{DIVIDER}
+Просто пишите задачи в чат — я сам разберу их на карточки.
+А этими командами можно управлять вручную.
+
+📋 <b>Задачи и доска</b>
+• /board — канбан-доска целиком
+• /tasks <code>[@кто]</code> — открытые задачи (свои или коллеги)
+• /unassigned_tasks — задачи без исполнителя
+• /task_edit <code>ID …</code> — поправить карточку
+• /task_del <code>ID</code> — убрать в корзину
+• /trash · /task_restore <code>ID</code> — корзина и возврат
+
+🔄 <b>Процесс</b>
+• /mode <code>auto|manual</code> — создавать сразу или с подтверждением
+• /report <code>…</code> — отчёт о прогрессе, доска обновится сама
+• /digest — кто чем занят прямо сейчас
+• /reconcile — вечерняя сверка по задачам
+• /remind — разослать напоминания о дедлайнах
+• /sync — сверить память с доской
+
+📚 <b>Ещё разделы</b>
+• /help_profile — профиль, заметки, рейтинг
+• /help_kb — база знаний
+• /help_meetings — встречи и голос
+• /help_admin — администрирование
 """
 
-HELP_MEETINGS = """\
-<b>Встречи</b>
-/enroll_voice — запомнить мой голос (подпись реплик на встречах)
-/meeting_stop — остановить запись встречи
+HELP_MEETINGS = f"""\
+🎙️ <b>Встречи и голос</b>
+{DIVIDER}
+• /meeting_source <code>[telemost|loopback]</code> — источник звука встреч
+• /meeting_stop — остановить запись встречи
+• /enroll_voice — запомнить мой голос, чтобы подписывать реплики
+• /who <code>Speaker_1 Имя</code> — подписать голос из последней записи
+
+💡 Кинул ссылку Телемоста в чат — я подключаюсь и пишу звонок сам.
+В режиме <code>loopback</code> пишу системный звук машины, что уже в звонке.
 """
 
-HELP_PROFILE = """\
-<b>Личный кабинет</b>
-/profile
-/leaderboard
-/note
-/notes
-/note_edit
-/note_del
-/notes_clear
-/join
-/register
-/alias
-/whoami
+HELP_PROFILE = f"""\
+👤 <b>Личный кабинет</b>
+{DIVIDER}
+<b>Профиль</b>
+• /profile — мои задачи, метрики и XP
+• /leaderboard — рейтинг команды
+• /whoami — как я вас вижу
+
+<b>Заметки</b>
+• /note <code>текст</code> — быстрая заметка
+• /notes — список заметок
+• /note_edit <code>ID текст</code> · /note_del <code>ID</code> — правка и удаление
+• /notes_clear — очистить все заметки
+
+<b>Кто я</b>
+• /register <code>Имя; алиас1, алиас2</code> — представиться
+• /alias <code>энди, стеф</code> — задать прозвища
 """
 
-HELP_KB = """\
-<b>База знаний</b>
-/kb
-/kb_add
-/kb_find
-/kb_edit
-/kb_del
-/kb_clear
+HELP_KB = f"""\
+📚 <b>База знаний</b>
+{DIVIDER}
+• /kb — последние записи
+• /kb_find <code>запрос</code> — поиск
+• /kb_add <code>Заголовок | текст</code> — добавить
+• /kb_edit <code>ID Заголовок | текст</code> — изменить
+• /kb_del <code>ID</code> — удалить
+• /kb_clear — очистить всю базу (только суперюзер)
 """
 
-HELP_ADMIN = """\
-<b>Администрирование</b>
-/make_me_superuser — первичное назначение суперюзера (после первого использования пропадает и становится неактивной)
-/grant_superuser
-/team_create
-/team_add_member
-/team_add_manager
-/no_team_manager
-/teams
-/board_clear
-/reset_bot
-/forget
+HELP_ADMIN = f"""\
+🛠️ <b>Администрирование</b>
+{DIVIDER}
+<b>Доступы</b>
+• /make_me_superuser — стать первым суперюзером (команда исчезнет после первого вызова)
+• /grant_superuser <code>@кто</code> — назначить суперюзера
+
+<b>Команды</b>
+• /team_create <code>Название</code> — создать команду
+• /team_add_member <code>TEAM @кто</code> — добавить участника
+• /team_add_manager <code>TEAM @кто</code> — назначить руководителя
+• /no_team_manager <code>@кто</code> — руководитель без команды
+• /teams — список команд
+
+<b>Опасная зона</b>
+• /board_clear — очистить доску
+• /reset_bot — полный сброс (кроме суперюзеров)
+• /forget — забыть всех участников
 """
 
 
@@ -103,7 +128,7 @@ def _visible_admin_help(c: AppContainer) -> str:
     base = HELP_ADMIN
     if c.team.superuser_exists():
         base = base.replace(
-            "/make_me_superuser — первичное назначение суперюзера (после первого использования пропадает и становится неактивной)\n",
+            "• /make_me_superuser — стать первым суперюзером (команда исчезнет после первого вызова)\n",
             "",
         )
     return base
@@ -156,8 +181,14 @@ def _report_chat_id(message: Message, c: AppContainer, member: TeamMember) -> in
 
 
 def _task_scope_chat_id(message: Message) -> int | None:
-    """None means all personal tasks; group id means tasks created in this chat only."""
-    return None if _is_private(message) else message.chat.id
+    """Разделение задач по чатам ОТКЛЮЧЕНО: всегда показываем задачи из всех чатов.
+
+    Раньше в группе возвращался id чата (только задачи этой беседы), а в ЛС — None
+    (все задачи). Теперь всегда None: и в группах, и в ЛС видны любые задачи.
+    Машинерия скоупа (in_chat/_card_in_scope) сохранена — вернуть поведение можно,
+    снова отдав `message.chat.id` для групп.
+    """
+    return None
 
 
 def _task_in_scope(c: AppContainer, task, chat_id: int | None) -> bool:
@@ -1006,7 +1037,12 @@ async def cmd_report(message: Message, command: CommandObject, c: AppContainer) 
     c.cabinet.record_report(member)
     notes = await c.reconciliation.record_report(_report_chat_id(message, c, member), key, text)
     if notes:
-        await message.answer("🌙 <b>Отчёт принят, доска обновлена</b>\n" + "\n".join(esc(n) for n in notes))
+        # XP-строки (🎮) — в личку исполнителю; в чат только статусы задач.
+        status = [n for n in notes if not n.startswith("🎮")]
+        xp = [n for n in notes if n.startswith("🎮")]
+        await message.answer("🌙 <b>Отчёт принят, доска обновлена</b>\n" + "\n".join(esc(n) for n in status))
+        from ..flow import deliver_xp
+        await deliver_xp(message.bot, c, xp, dm_chat_id=member.dm_chat_id if member else None, chat_id=message.chat.id)
     else:
         await message.answer("🌙 <b>Отчёт принят</b>\nПодходящих открытых задач для авто-статуса не нашёл.")
 
@@ -1037,7 +1073,7 @@ async def cmd_remind(message: Message, c: AppContainer) -> None:
 
     if c.bot is None:
         c.bot = message.bot
-    sent = await run_reminders(c)
+    sent = await run_reminders(c, respect_quiet=False)  # ручной вызов — тихие часы не мешают
     if sent == 0:
         await message.answer("✅ Дедлайны под контролем: напоминать сейчас не о чем.")
 

@@ -129,12 +129,45 @@ class AudioSettings(BaseSettings):
     whisper_beam_size: int = 5  # ширина beam search (выше → точнее, но медленнее)
     # Доп. термины/жаргон проекта для initial_prompt Whisper (имена команды
     # подставляются автоматически из реестра голосов). Свободная фраза/перечисление.
-    whisper_prompt: str = ""
+    # Дефолт — популярная IT/проджект-лексика: заметно снижает ошибки Whisper на
+    # терминах и дедлайнах (например «до 15:00» вместо «до 15-ти номера»).
+    whisper_prompt: str = (
+        "Рабочая встреча команды. Термины: задача, дедлайн, спринт, бэклог, "
+        "канбан, доска, YouGile, Telegram, бот, релиз, деплой, фича, баг, фикс, "
+        "ревью, пул-реквест, мердж, API, эндпоинт, бэкенд, фронтенд, база данных, "
+        "макет, дизайн, прод, стейджинг, созвон, дейли, ретро, MVP, демо. "
+        "Сроки звучат как «к понедельнику», «до 15:00», «к концу недели»."
+    )
     groq_whisper_model: str = "whisper-large-v3-turbo"  # модель Groq Whisper
     groq_api_key: str = ""
     # Доп. ключи Groq через запятую — ротация при достижении лимита (429).
     groq_api_keys: str = ""
     hf_token: str = ""  # диаризация pyannote + нейро-эмбеддинги (только backend=local)
+
+    # ── Встречи: источник звука ───────────────────────────────────────────────
+    # telemost — бот САМ заходит в звонок по ссылке (браузер Playwright) и пишет
+    #            его звук через loopback. Удобно, когда на машине никого нет.
+    # loopback — пишем системный звук машины, которая УЖЕ в звонке (без браузера).
+    # Значение глобальное по умолчанию; на чат переопределяется командой
+    # /meeting_source. Неизвестное значение трактуется как loopback.
+    meeting_source: str = "telemost"  # telemost | loopback
+    # Имя, под которым бот представляется в Телемосте при автоподключении.
+    telemost_join_name: str = "Дирижёр 🤖"
+    # Показывать окно браузера. False (видимый) надёжнее: звук звонка играет в
+    # колонки → loopback его пишет, и можно вручную дожать «Подключиться».
+    # True (headless) — звук может не пойти на устройство вывода → тишина в записи.
+    telemost_headless: bool = False
+    # Сколько секунд ждать подтверждения входа в звонок, прежде чем сдаться.
+    telemost_join_timeout: int = 60
+    # Браузер для входа: канал Playwright. Пусто → автоперебор msedge → chrome →
+    # встроенный chromium (берём первый рабочий). Встроенный Chrome for Testing на
+    # части машин не стартует headful (SxS / нет нужного VC++ runtime), а
+    # системный Edge/Chrome работает всегда. Можно зафиксировать «msedge»/«chrome».
+    telemost_browser_channel: str = ""
+    # Необязательные CSS-селекторы под текущий UI Телемоста (если дефолтные
+    # перестали попадать). Пусто → набор эвристик в audio/telemost.py.
+    telemost_name_selector: str = ""
+    telemost_join_selector: str = ""
 
     # ── Встречи: захват системного звука (loopback) ───────────────────────────
     meeting_samplerate: int = 16000
@@ -142,6 +175,11 @@ class AudioSettings(BaseSettings):
     meeting_max_minutes: int = 180  # жёсткий предел длительности записи
     meeting_silence_rms: float = 0.004  # порог RMS, ниже которого чанк = тишина
     loopback_device: str = ""  # имя устройства вывода; пусто → колонки по умолчанию
+
+    @property
+    def meeting_source_norm(self) -> str:
+        """Нормализованный источник звука встреч: `telemost` или `loopback`."""
+        return "telemost" if str(self.meeting_source).strip().lower() == "telemost" else "loopback"
 
     # ── Голосовые отпечатки (speaker embedding → авто-имя) ────────────────────
     # wespeaker-voxceleb-resnet34-LM — сильная нейромодель (ResNet34), её же
@@ -186,10 +224,18 @@ class AudioSettings(BaseSettings):
 
 class ScheduleSettings(BaseSettings):
     morning_digest_cron: str = "0 9 * * *"        # утренняя сводка задач на день
-    reminder_cron: str = "0 10,15 * * *"
+    reminder_cron: str = "0 10 * * *"             # раз в день (меньше спама)
     evening_reconcile_cron: str = "0 20 * * *"
     leaderboard_cron: str = "0 18 * * 5"          # лидерборд по пятницам в 18:00
     remind_before_hours: int = 24
+    # Тихие часы: в этом интервале (по timezone) авто-напоминания НЕ шлются.
+    # quiet_start == quiet_end → тихие часы выключены. Интервал через полночь ок
+    # (например 22→8). Ручной /remind тихие часы игнорирует.
+    quiet_start: int = 22
+    quiet_end: int = 8
+    # Объявлять начисление XP/ачивок в общем чате. False (по умолчанию) — только
+    # в личку исполнителю и в /profile, чтобы не засорять командный чат.
+    game_announce_in_chat: bool = False
 
 
 class APISettings(BaseSettings):

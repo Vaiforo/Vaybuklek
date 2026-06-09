@@ -29,6 +29,9 @@ audio = [
     "numpy>=1.26",
     "soundcard>=0.4",  # захват системного звука встреч (WASAPI loopback)
 ]
+# Автоподключение бота к Яндекс.Телемосту (вход в звонок через браузер).
+# После установки нужен `playwright install chromium`.
+telemost = ["playwright>=1.40"]
 # Разработка и тесты
 dev = ["pytest>=8", "pytest-asyncio>=0.23", "ruff>=0.5"]
 

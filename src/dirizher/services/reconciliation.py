@@ -39,17 +39,23 @@ class DailyReports:
 
 
 class ReconciliationService:
+    # Порог семантической близости отчёта и задачи (для backend=chroma).
+    # MiniLM держит высокий «пол» косинуса, поэтому ставим консервативно.
+    _SEM_THRESHOLD = 0.58
+
     def __init__(
         self,
         repo: TaskRepository,
         team: TeamRegistry,
         service: TaskService,
         game: "object | None" = None,
+        memory: "object | None" = None,
     ) -> None:
         self.repo = repo
         self.team = team
         self.service = service
         self.game = game  # GamificationService | None — начисление XP при закрытии
+        self.memory = memory  # TaskMemory | None — семантический матчинг отчёт↔задача
         self._reports: dict[int, DailyReports] = {}
 
     def _today_reports(self, chat_id: int, today: date) -> DailyReports:
@@ -76,8 +82,11 @@ class ReconciliationService:
         for t in open_tasks:
             overlap = _tokens(t.title) & rep_tokens
             # привязываем по совпадению ключевых слов; если открытая задача одна —
-            # обобщённый отчёт «всё готово» применяем к ней
-            relevant = bool(overlap) or len(open_tasks) == 1
+            # обобщённый отчёт «всё готово» применяем к ней; плюс семантическая
+            # близость (backend=chroma) ловит совпадение без общих слов
+            # («авторизацию доделал» ↔ «поднять бэкенд авторизации»).
+            sem_ok = self._semantic_match(text, t.title)
+            relevant = bool(overlap) or len(open_tasks) == 1 or sem_ok
             if not relevant:
                 continue
             if is_done:
@@ -89,6 +98,11 @@ class ReconciliationService:
                 await self.service.set_status(t, TaskStatus.in_progress)
                 notes.append(f"▶️ «{t.title}» → В работе")
         return notes
+
+    def _semantic_match(self, report: str, title: str) -> bool:
+        if self.memory is None:
+            return False
+        return self.memory.pairwise_similarity(report, title) >= self._SEM_THRESHOLD
 
     def evening_digest(self, chat_id: int, *, today: date | None = None) -> tuple[str, list[str]]:
         """Сводка дня + список упоминаний тех, кто не отписался."""

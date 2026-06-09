@@ -124,8 +124,8 @@ async def handle(message: Message, c: AppContainer, cmd: TaskCommand) -> bool:
             return True
         await c.service.set_status(task, TaskStatus.done)
         await message.answer(f"✅ Готово: «{esc(task.title)}».")
-        for line in c.game.complete(task):
-            await message.answer(line)
+        from .flow import deliver_xp  # XP — в личку исполнителю, без спама в чат
+        await deliver_xp(message.bot, c, c.game.complete(task), assignee=task.assignee, chat_id=message.chat.id)
     elif cmd.action == "start":
         if not can_change_task_status(actor, task, c.team):
             return True
