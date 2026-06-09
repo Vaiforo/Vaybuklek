@@ -6,7 +6,7 @@ import pytest
 
 from dirizher.bot.handlers.commands import _card_belongs_to
 from dirizher.container import AppContainer
-from dirizher.domain.models import Task, TeamMember
+from dirizher.domain.models import Task, Team, TeamMember
 from dirizher.integrations.yougile import BoardCard
 from dirizher.services.task_service import _is_junk_title
 from dirizher.state_store import StateStore
@@ -41,6 +41,73 @@ def test_container_restores_team_after_restart():
     cont = AppContainer()  # имитируем перезапуск
     assert cont.team.knows(9)
     assert cont.team.resolve("zoe").email == "z@z.com"
+
+
+def test_state_store_save_without_teams_preserves_existing_team_block(tmp_path):
+    store = StateStore(str(tmp_path / "state.json"))
+    team = Team(id="dev", name="Dev", manager_user_ids=[1], member_user_ids=[1, 2])
+    members = [
+        TeamMember(user_id=1, username="lead", leader_team_ids=["dev"], member_team_ids=["dev"]),
+        TeamMember(user_id=2, username="worker", member_team_ids=["dev"]),
+    ]
+    store.save(members, [], [team])
+
+    # Legacy callers used to omit the third arg; that must not wipe org structure.
+    store.save(members, [Task(title="T")])
+
+    _members, tasks, teams = store.load_full()
+    assert tasks[0].title == "T"
+    assert teams == [team]
+
+
+def test_container_rebuilds_team_list_from_legacy_member_links(tmp_path):
+    from dirizher.config import Settings
+
+    state_path = tmp_path / "state.json"
+    settings = Settings()
+    settings.memory.state_path = str(state_path)
+    settings.memory.project_snapshot = str(tmp_path / "project.md")
+    settings.memory.chroma_path = str(tmp_path / "chroma")
+    settings.memory.backend = "lexical"
+    settings.yougile.api_key = ""
+
+    lead = TeamMember(user_id=1, username="lead", leader_team_ids=["legacy"], member_team_ids=["legacy"])
+    worker = TeamMember(user_id=2, username="worker", member_team_ids=["legacy"])
+    StateStore(str(state_path)).save([lead, worker], [], [])
+
+    cont = AppContainer(settings)
+
+    teams = cont.team.teams()
+    assert len(teams) == 1
+    assert teams[0].id == "legacy"
+    assert set(teams[0].member_user_ids) == {1, 2}
+    assert teams[0].manager_user_ids == [1]
+
+    cont.persist()
+    _members, _tasks, restored_teams = StateStore(str(state_path)).load_full()
+    assert restored_teams[0].id == "legacy"
+
+
+def test_container_repairs_member_links_from_team_block(tmp_path):
+    from dirizher.config import Settings
+
+    state_path = tmp_path / "state.json"
+    settings = Settings()
+    settings.memory.state_path = str(state_path)
+    settings.memory.project_snapshot = str(tmp_path / "project.md")
+    settings.memory.chroma_path = str(tmp_path / "chroma")
+    settings.memory.backend = "lexical"
+    settings.yougile.api_key = ""
+
+    team = Team(id="dev", name="Dev", manager_user_ids=[1], member_user_ids=[1, 2])
+    members = [TeamMember(user_id=1, username="lead"), TeamMember(user_id=2, username="worker")]
+    StateStore(str(state_path)).save(members, [], [team])
+
+    cont = AppContainer(settings)
+
+    assert cont.team.get_by_user_id(1).member_team_ids == ["dev"]
+    assert cont.team.get_by_user_id(1).leader_team_ids == ["dev"]
+    assert cont.team.get_by_user_id(2).member_team_ids == ["dev"]
 
 
 def test_forget_clears_team_and_persists(c):
