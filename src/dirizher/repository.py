@@ -64,6 +64,21 @@ class TaskRepository:
     def open_by_assignee(self, name: str) -> list[Task]:
         return [t for t in self.by_assignee(name) if t.status != TaskStatus.done]
 
+    @staticmethod
+    def in_chat(task: Task, chat_id: int | None) -> bool:
+        if chat_id is None:
+            return True
+        return any(source.chat_id == chat_id for source in task.sources)
+
+    def open_unassigned(self, *, chat_id: int | None = None) -> list[Task]:
+        return [
+            t for t in self.open()
+            if not _assignee_keys(t.assignee) and self.in_chat(t, chat_id)
+        ]
+
+    def open_by_assignee_in_chat(self, name: str, chat_id: int | None) -> list[Task]:
+        return [t for t in self.open_by_assignee(name) if self.in_chat(t, chat_id)]
+
     def due_on_or_before(self, day: date) -> list[Task]:
         return [
             t for t in self._tasks.values()
@@ -97,6 +112,7 @@ class TeamRegistry:
                 existing.yougile_id = member.yougile_id or existing.yougile_id
                 existing.dm_chat_id = member.dm_chat_id or existing.dm_chat_id
                 existing.is_superuser = member.is_superuser or existing.is_superuser
+                existing.is_no_team_manager = member.is_no_team_manager or existing.is_no_team_manager
                 for tid in member.leader_team_ids:
                     if tid not in existing.leader_team_ids:
                         existing.leader_team_ids.append(tid)
@@ -128,6 +144,7 @@ class TeamRegistry:
             for member in self._by_id.values():
                 member.leader_team_ids.clear()
                 member.member_team_ids.clear()
+                member.is_no_team_manager = False
         else:
             for t in self._teams.values():
                 t.manager_user_ids = [uid for uid in t.manager_user_ids if uid in self._by_id]
@@ -147,6 +164,12 @@ class TeamRegistry:
     def grant_superuser(self, member: TeamMember) -> TeamMember:
         saved = self.register(member)
         saved.is_superuser = True
+        return saved
+
+    def grant_no_team_manager(self, member: TeamMember) -> TeamMember:
+        """Назначить руководителя слоя «нет команды» без добавления в команду."""
+        saved = self.register(member)
+        saved.is_no_team_manager = True
         return saved
 
     def add_team(self, team: Team) -> Team:

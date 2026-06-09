@@ -160,3 +160,74 @@ def test_restore_does_not_index_trashed_tasks(tmp_path):
 
     assert c2.repo.trashed()[0].title == task.title
     assert c2.memory.find_duplicate(task.dedup_text()) is None
+
+
+def test_repository_filters_unassigned_and_assigned_tasks_by_chat():
+    from dirizher.domain.enums import TaskSource
+    from dirizher.domain.models import SourceRef
+
+    repo = TaskRepository()
+    chat_one = Task(title="No owner 1", sources=[SourceRef(source=TaskSource.chat, chat_id=100)])
+    chat_two = Task(title="No owner 2", sources=[SourceRef(source=TaskSource.chat, chat_id=200)])
+    assigned = Task(title="Mine", assignee="alice", sources=[SourceRef(source=TaskSource.chat, chat_id=100)])
+    repo.add(chat_one)
+    repo.add(chat_two)
+    repo.add(assigned)
+
+    assert repo.open_unassigned(chat_id=100) == [chat_one]
+    assert {t.id for t in repo.open_unassigned(chat_id=None)} == {chat_one.id, chat_two.id}
+    assert repo.open_by_assignee_in_chat("alice", 100) == [assigned]
+    assert repo.open_by_assignee_in_chat("alice", 200) == []
+
+
+def test_no_team_manager_can_create_and_manage_no_team_tasks_when_roles_enabled():
+    registry = TeamRegistry()
+    registry.grant_superuser(TeamMember(user_id=1, username="root"))
+    team = registry.add_team(Team(name="Dev"))
+    team_leader = registry.assign_member_to_team(TeamMember(user_id=2, username="lead"), team, leader=True)
+    no_team_manager = registry.grant_no_team_manager(TeamMember(user_id=4, username="notm"))
+    subordinate = registry.assign_member_to_team(TeamMember(user_id=3, username="worker"), team)
+    no_team_task = Task(title="Без исполнителя")
+
+    assert no_team_manager.is_no_team_manager is True
+    assert no_team_manager.member_team_ids == []
+    assert no_team_manager.leader_team_ids == []
+    assert can_create_task(no_team_manager, no_team_task, registry) is True
+    assert can_delete_task(no_team_manager, no_team_task, registry) is True
+    assert can_view_member_tasks(no_team_manager, subordinate) is True
+    assert can_create_task(team_leader, no_team_task, registry) is False
+    assert can_delete_task(team_leader, no_team_task, registry) is False
+    assert can_create_task(subordinate, no_team_task, registry) is False
+    assert can_delete_task(subordinate, no_team_task, registry) is False
+
+
+def test_permissions_consider_all_member_teams_when_task_team_missing():
+    registry = TeamRegistry()
+    registry.grant_superuser(TeamMember(user_id=1, username="root"))
+    first = registry.add_team(Team(name="First"))
+    second = registry.add_team(Team(name="Second"))
+    member = registry.register(TeamMember(user_id=2, username="worker"))
+    second_leader = registry.assign_member_to_team(TeamMember(user_id=3, username="lead2"), second, leader=True)
+    registry.assign_member_to_team(member, first)
+    registry.assign_member_to_team(member, second)
+    task_without_cached_team = Task(title="Multi-team", assignee="worker")
+
+    assert can_create_task(second_leader, task_without_cached_team, registry) is True
+    assert can_delete_task(second_leader, task_without_cached_team, registry) is True
+
+
+def test_no_team_manager_flag_is_persisted(tmp_path):
+    registry = TeamRegistry()
+    manager = registry.grant_no_team_manager(TeamMember(user_id=10, username="notm"))
+    task = Task(title="No team task")
+
+    store = StateStore(str(tmp_path / "state.json"))
+    store.save(registry.all(), [task], registry.teams())
+    members, tasks, teams = store.load_full()
+
+    assert members[0].username == manager.username
+    assert members[0].is_no_team_manager is True
+    assert members[0].member_team_ids == []
+    assert members[0].leader_team_ids == []
+    assert tasks[0].team_id is None
+    assert teams == []

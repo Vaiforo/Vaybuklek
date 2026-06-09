@@ -61,6 +61,7 @@ class TeamMember(BaseModel):
     voice_registered: bool = False
     dm_chat_id: int | None = None     # личный чат с ботом для персональных уведомлений
     is_superuser: bool = False
+    is_no_team_manager: bool = False  # руководитель слоя «нет команды» в беседе
     leader_team_ids: list[str] = Field(default_factory=list)
     member_team_ids: list[str] = Field(default_factory=list)
 

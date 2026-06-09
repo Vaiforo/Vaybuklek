@@ -30,6 +30,7 @@ BOT_COMMANDS = [
     BotCommand(command="join", description="👋 Представиться боту"),
     BotCommand(command="alias", description="🏷️ Мои прозвища (для тёзок)"),
     BotCommand(command="whoami", description="🪞 Как я вас вижу"),
+    BotCommand(command="no_team_manager", description="🧭 Руководитель без команды"),
     BotCommand(command="enroll_voice", description="🎙️ Запомнить мой голос"),
     BotCommand(command="meeting_stop", description="⏹️ Остановить запись встречи"),
 ]

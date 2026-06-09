@@ -38,13 +38,26 @@ def is_self(member: TeamMember | None, task: Task, team: TeamRegistry) -> bool:
     return False
 
 
-def task_team_id(task: Task, team: TeamRegistry) -> str | None:
+def task_team_ids(task: Task, team: TeamRegistry) -> list[str]:
     if task.team_id:
-        return task.team_id
+        return [task.team_id]
     member = team.resolve(task.assignee)
-    if member and member.member_team_ids:
-        return member.member_team_ids[0]
-    return None
+    if member:
+        return list(member.member_team_ids)
+    return []
+
+
+def task_team_id(task: Task, team: TeamRegistry) -> str | None:
+    ids = task_team_ids(task, team)
+    return ids[0] if ids else None
+
+
+def _can_manage_no_team(actor: TeamMember | None) -> bool:
+    # «Нет команды» — общий слой беседы вне созданных команд. Когда включены роли,
+    # управлять им может только отдельный руководитель без команды (и суперюзер
+    # выше по стеку проверок). Руководитель обычной команды не получает эти права
+    # автоматически, чтобы не назначать задачи людям вне своей команды.
+    return bool(actor and actor.is_no_team_manager)
 
 
 def can_create_task(actor: TeamMember | None, task: Task, team: TeamRegistry) -> bool:
@@ -52,8 +65,10 @@ def can_create_task(actor: TeamMember | None, task: Task, team: TeamRegistry) ->
         return True
     if is_superuser(actor):
         return True
-    tid = task_team_id(task, team)
-    return bool(actor and tid and tid in actor.leader_team_ids)
+    tids = task_team_ids(task, team)
+    if not tids:
+        return _can_manage_no_team(actor)
+    return bool(actor and any(tid in actor.leader_team_ids for tid in tids))
 
 
 def can_manage_task(actor: TeamMember | None, task: Task, team: TeamRegistry) -> bool:
@@ -61,8 +76,10 @@ def can_manage_task(actor: TeamMember | None, task: Task, team: TeamRegistry) ->
         return True
     if is_superuser(actor):
         return True
-    tid = task_team_id(task, team)
-    return bool(actor and tid and tid in actor.leader_team_ids)
+    tids = task_team_ids(task, team)
+    if not tids:
+        return _can_manage_no_team(actor)
+    return bool(actor and any(tid in actor.leader_team_ids for tid in tids))
 
 
 def can_change_task_status(actor: TeamMember | None, task: Task, team: TeamRegistry) -> bool:
@@ -79,7 +96,7 @@ def can_view_member_tasks(actor: TeamMember | None, target: TeamMember | None) -
         return False
     if actor.user_id is not None and actor.user_id == target.user_id:
         return True
-    return is_superuser(actor) or bool(actor.leader_team_ids)
+    return is_superuser(actor) or bool(actor.leader_team_ids) or bool(actor.is_no_team_manager)
 
 
 def can_manage_knowledge(actor: TeamMember | None, author_user_id: int | None, knowledge_team_id: str | None) -> bool:

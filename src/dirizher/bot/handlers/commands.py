@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re as _re
+from datetime import date
 from html import escape as esc
 
 from aiogram import Router
@@ -16,6 +17,7 @@ from ...permissions import (
     can_change_task_status,
     can_delete_task,
     can_manage_knowledge,
+    can_manage_task,
     can_view_member_tasks,
     is_superuser,
 )
@@ -33,7 +35,8 @@ HELP = """\
 <b>Работа с задачами</b>
 /mode auto|manual — авто-режим или подтверждение
 /board — канбан-доска
-/tasks — мои открытые задачи с кнопками статуса
+/tasks — мои открытые задачи (в личке все, в конфе только задачи этой конфы)
+/unassigned_tasks — обезличенные задачи без исполнителя
 /now [@user] — текущие задачи пользователя (руководители/суперюзеры могут смотреть всех)
 /digest — кто чем занят сейчас по всей команде
 /trash — корзина удалённых задач на 4 часа
@@ -83,7 +86,8 @@ def _admin_help() -> str:
 /grant_superuser @user — назначить суперюзера
 /team create Название — создать команду
 /team add_member TEAM @user — добавить подчинённого
-/team add_manager TEAM @user — назначить руководителя
+/team add_manager TEAM @user — назначить руководителя команды
+/no_team_manager @user — назначить руководителя без команды (команда: —)
 /team list — список команд
 /board_clear confirm — очистить канбан-доску
 /reset_bot confirm — полностью очистить бота
@@ -143,19 +147,35 @@ def _report_chat_id(message: Message, c: AppContainer, member: TeamMember) -> in
     return message.chat.id
 
 
+def _task_scope_chat_id(message: Message) -> int | None:
+    """None means all personal tasks; group id means tasks created in this chat only."""
+    return None if _is_private(message) else message.chat.id
+
+
+def _task_in_scope(c: AppContainer, task, chat_id: int | None) -> bool:
+    return c.repo.in_chat(task, chat_id)
+
+
+def _card_in_scope(c: AppContainer, card, chat_id: int | None) -> bool:
+    if chat_id is None:
+        return True
+    task = c.repo.get_by_card(card.id)
+    return task is not None and _task_in_scope(c, task, chat_id)
+
+
 def _find_task(c: AppContainer, raw_id: str):
     raw_id = (raw_id or "").strip()
     return c.repo.get(raw_id) or c.repo.get_by_card(raw_id)
 
 
-def _tasks_for_member(c: AppContainer, member: TeamMember):
+def _tasks_for_member(c: AppContainer, member: TeamMember, *, chat_id: int | None = None):
     names = [member.username or "", member.full_name or "", *member.aliases]
     tasks = []
     seen: set[str] = set()
     for name in names:
         if not name:
             continue
-        for task in c.repo.open_by_assignee(name):
+        for task in c.repo.open_by_assignee_in_chat(name, chat_id):
             if task.id not in seen:
                 seen.add(task.id)
                 tasks.append(task)
@@ -201,6 +221,28 @@ def _render_trash(c: AppContainer) -> str:
     return "\n".join(lines)
 
 
+def _render_unassigned(c: AppContainer, *, chat_id: int | None) -> str:
+    tasks = sorted(
+        c.repo.open_unassigned(chat_id=chat_id),
+        key=lambda t: (t.deadline is None, t.deadline or date.max, t.title.lower()),
+    )
+    scope = "во всех чатах" if chat_id is None else "в этой конфе"
+    if not tasks:
+        return f"📥 <b>Обезличенных задач {esc(scope)} нет</b>"
+    lines = [f"📥 <b>Обезличенные задачи {esc(scope)}</b>", "━━━━━━━━━━━━━━"]
+    for idx, task in enumerate(tasks[:30], start=1):
+        status = tx.effective_status(task)
+        team = c.team.get_team(task.team_id)
+        team_name = team.name if team else "—"
+        lines.append(f"{idx}. <code>{esc(task.id)}</code> · <b>{esc(task.title)}</b>")
+        lines.append(f"   🔸 {esc(status.label_ru)} · 👥 Команда: {esc(team_name)}")
+        lines.append(f"   📅 {esc(task.deadline_display())}")
+    hidden = len(tasks) - 30
+    if hidden > 0:
+        lines.append(f"… ещё {hidden}")
+    return "\n".join(lines)
+
+
 def _author_name(message: Message) -> str:
     user = message.from_user
     return (user.username or user.full_name) if user else "участник"
@@ -238,6 +280,26 @@ async def cmd_grant_superuser(message: Message, command: CommandObject, c: AppCo
     await message.answer(f"👑 Суперюзер назначен: {target.mention()}.")
 
 
+@router.message(Command("no_team_manager", "manager_no_team", "make_no_team_manager"))
+async def cmd_no_team_manager(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    target = _resolve_mentioned_member(c, message, (command.args or "").strip())
+    if target is None:
+        await message.answer(
+            "Формат: <code>/no_team_manager @username</code> "
+            "или ответьте командой на сообщение участника."
+        )
+        return
+    c.team.grant_no_team_manager(target)
+    c.persist()
+    await message.answer(
+        f"🧭 Руководитель без команды назначен: {target.mention()}. "
+        "В графе «Команда» у него остаётся <b>—</b>."
+    )
+
+
 @router.message(Command("team", "teams"))
 async def cmd_team(message: Message, command: CommandObject, c: AppContainer) -> None:
     actor = _actor(message, c)
@@ -246,10 +308,17 @@ async def cmd_team(message: Message, command: CommandObject, c: AppContainer) ->
     action_l = action.lower()
     if action_l in {"list", "", "список"}:
         teams = c.team.teams()
-        if not teams:
+        no_team_managers = [m for m in c.team.all() if m.is_no_team_manager]
+        if not teams and not no_team_managers:
             await message.answer("Команды ещё не созданы. Суперюзер может создать: <code>/team create Название</code>")
             return
         lines = ["👥 <b>Команды</b>"]
+        if no_team_managers:
+            lines.append(
+                "• <b>Нет команды</b> · рук.: "
+                + ", ".join(m.mention() for m in no_team_managers)
+                + " · команда: —"
+            )
         for t in teams:
             managers = [c.team.get_by_user_id(uid) for uid in t.manager_user_ids]
             members = [c.team.get_by_user_id(uid) for uid in t.member_user_ids]
@@ -270,6 +339,18 @@ async def cmd_team(message: Message, command: CommandObject, c: AppContainer) ->
         team = c.team.add_team(Team(name=name[:80]))
         c.persist()
         await message.answer(f"👥 Команда создана: <b>{esc(team.name)}</b> · <code>{team.id}</code>")
+        return
+    if action_l in {"add_no_team_manager", "no_team_manager", "manager_no_team", "руководитель_без_команды"}:
+        target = _resolve_mentioned_member(c, message, rest.strip())
+        if target is None:
+            await message.answer("Формат: <code>/team add_no_team_manager @username</code>")
+            return
+        c.team.grant_no_team_manager(target)
+        c.persist()
+        await message.answer(
+            f"🧭 Руководитель без команды назначен: {target.mention()}. "
+            "В графе «Команда» у него остаётся <b>—</b>."
+        )
         return
     if action_l in {"add_manager", "manager", "lead", "leader", "руководитель"}:
         raw_team, _, raw_user = rest.partition(" ")
@@ -293,7 +374,7 @@ async def cmd_team(message: Message, command: CommandObject, c: AppContainer) ->
         c.persist()
         await message.answer(f"👤 Участник добавлен в <b>{esc(team.name)}</b>: {target.mention()}.")
         return
-    await message.answer("Команды: <code>/team create</code>, <code>/team add_member</code>, <code>/team add_manager</code>, <code>/team list</code>")
+    await message.answer("Команды: <code>/team create</code>, <code>/team add_member</code>, <code>/team add_manager</code>, <code>/team add_no_team_manager</code>, <code>/team list</code>")
 
 
 @router.message(Command("manager", "make_manager"))
@@ -372,12 +453,16 @@ async def cmd_mode(message: Message, command: CommandObject, c: AppContainer) ->
 @router.message(Command("board"))
 async def cmd_board(message: Message, c: AppContainer) -> None:
     actor = _actor(message, c)
+    scope_chat_id = _task_scope_chat_id(message)
     cards = await c.board.list_cards()
     trashed_cards = {t.board_card_id for t in c.repo.trashed() if t.board_card_id}
-    cards = [card for card in cards if card.id not in trashed_cards]
+    cards = [card for card in cards if card.id not in trashed_cards and _card_in_scope(c, card, scope_chat_id)]
     if c.team.superuser_exists() and not is_superuser(actor):
-        allowed = set(actor.leader_team_ids)
-        cards = [card for card in cards if (task := c.repo.get_by_card(card.id)) is not None and task.team_id in allowed]
+        cards = [
+            card for card in cards
+            if (task := c.repo.get_by_card(card.id)) is not None
+            and can_manage_task(actor, task, c.team)
+        ]
         if not cards:
             return
     await message.answer(tx.render_board(cards))
@@ -445,11 +530,15 @@ async def send_my_tasks(message: Message, c: AppContainer, *, query_text: str = 
     if not can_view_member_tasks(actor, target):
         return
 
+    scope_chat_id = _task_scope_chat_id(message)
     cards = await c.board.list_cards()
     trashed_cards = {t.board_card_id for t in c.repo.trashed() if t.board_card_id}
     mine = [
         c_ for c_ in cards
-        if c_.id not in trashed_cards and c_.status is not TaskStatus.done and _card_belongs_to(c_, target)
+        if c_.id not in trashed_cards
+        and tx.effective_status(c_) is not TaskStatus.done
+        and _card_belongs_to(c_, target)
+        and _card_in_scope(c, c_, scope_chat_id)
     ]
 
     whose = "У вас" if is_self else f"У {label}"
@@ -488,7 +577,7 @@ async def cmd_now(message: Message, command: CommandObject, c: AppContainer) -> 
 @router.message(Command("digest", "current_digest", "занятость"))
 async def cmd_current_digest(message: Message, c: AppContainer) -> None:
     actor = _actor(message, c)
-    if not (is_superuser(actor) or actor.leader_team_ids):
+    if not (is_superuser(actor) or actor.leader_team_ids or actor.is_no_team_manager):
         return
     await message.answer(_render_current_digest(c))
 
@@ -496,7 +585,7 @@ async def cmd_current_digest(message: Message, c: AppContainer) -> None:
 @router.message(Command("trash", "deleted_tasks", "корзина"))
 async def cmd_trash(message: Message, c: AppContainer) -> None:
     actor = _actor(message, c)
-    if not (is_superuser(actor) or actor.leader_team_ids):
+    if not (is_superuser(actor) or actor.leader_team_ids or actor.is_no_team_manager):
         return
     await c.service.purge_expired_trash()
     await message.answer(_render_trash(c))
@@ -514,6 +603,15 @@ async def cmd_task_restore(message: Message, command: CommandObject, c: AppConta
         return
     await c.service.restore_task(task)
     await message.answer(f"♻️ Восстановил задачу: «{esc(task.title)}».")
+
+
+
+@router.message(Command("unassigned_tasks", "unassigned", "no_assignee", "без_исполнителя"))
+async def cmd_unassigned_tasks(message: Message, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if c.team.superuser_exists() and not (is_superuser(actor) or actor.leader_team_ids or actor.is_no_team_manager):
+        return
+    await message.answer(_render_unassigned(c, chat_id=_task_scope_chat_id(message)))
 
 
 @router.message(Command("tasks"))
@@ -877,10 +975,18 @@ async def cmd_forget(message: Message, c: AppContainer) -> None:
 async def cmd_whoami(message: Message, c: AppContainer) -> None:
     member = _member_from_message(message, c)
     dm = "включены" if member.dm_chat_id else "не включены"
+    teams = [c.team.get_team(tid) for tid in member.member_team_ids]
+    team_names = ", ".join(t.name for t in teams if t) or "—"
+    managed_teams = [c.team.get_team(tid) for tid in member.leader_team_ids]
+    managed_names = ", ".join(t.name for t in managed_teams if t)
+    if member.is_no_team_manager:
+        managed_names = ", ".join([name for name in [managed_names, "нет команды"] if name])
     await message.answer(
         "👤 <b>Как я вас вижу</b>\n"
         f"Имя: {esc(member.full_name or '—')}\n"
         f"Username: @{esc(member.username or '—')}\n"
         f"Алиасы: {esc(', '.join(member.aliases) or '—')}\n"
+        f"Команда: {esc(team_names)}\n"
+        f"Руководит: {esc(managed_names or '—')}\n"
         f"Личные уведомления: {dm}"
     )
