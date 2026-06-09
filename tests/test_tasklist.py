@@ -72,7 +72,9 @@ def test_render_board_has_single_section_per_status():
         BoardCard(id="done-1", title="Проверить UI", status=TaskStatus.done),
     ])
 
-    assert text.count("К выполнению") == 1
-    assert text.count("В работе") == 1
-    assert text.count("Готово") == 1
-    assert "Сделать бота · 👤 Данила" in text
+    assert text.count("<b>К выполнению</b>") == 1
+    assert text.count("<b>В работе</b>") == 1
+    assert text.count("<b>Готово</b>") == 1
+    assert "<b>Статус:</b> К выполнению" in text
+    assert "<b>Исполнитель:</b> Данила" in text
+    assert "<b>Дедлайн:</b> без срока" in text

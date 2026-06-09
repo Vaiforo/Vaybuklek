@@ -90,3 +90,44 @@ async def test_notification_falls_back_to_group_chat():
 
     assert ok is True
     assert bot.sent == [(2, "hello")]
+
+
+def test_personal_notes_can_be_edited_deleted_and_cleared():
+    c = AppContainer()
+    member = c.team.register(TeamMember(user_id=1, username="maxim", full_name="Максим"))
+    first = c.cabinet.add_note(member, "старый текст")
+    c.cabinet.add_note(member, "вторая заметка")
+
+    updated = c.cabinet.edit_note(member, first.id, "новый текст")
+    assert updated is not None
+    assert updated.text == "новый текст"
+    assert "новый текст" in c.cabinet.render_notes(member)
+
+    removed = c.cabinet.delete_note(member, first.id)
+    assert removed is not None
+    assert removed.text == "новый текст"
+    assert all(note.id != first.id for note in c.cabinet.notes_for(member, limit=None))
+
+    assert c.cabinet.clear_notes(member) == 1
+    assert c.cabinet.notes_for(member) == []
+
+
+def test_knowledge_items_can_be_edited_deleted_and_cleared():
+    c = AppContainer()
+    first = c.cabinet.add_knowledge("Демо", "Старый сценарий", "maxim")
+    c.cabinet.add_knowledge("Регламент", "Созвон в 10", "dasha")
+
+    updated = c.cabinet.edit_knowledge(first.id, "Новый демо", "Новый сценарий", "dasha")
+    assert updated is not None
+    assert updated.title == "Новый демо"
+    assert updated.text == "Новый сценарий"
+    assert c.cabinet.search_knowledge("старый") == []
+    assert c.cabinet.search_knowledge("новый") == [updated]
+
+    removed = c.cabinet.delete_knowledge(first.id)
+    assert removed is not None
+    assert removed.title == "Новый демо"
+    assert c.cabinet.get_knowledge(first.id) is None
+
+    assert c.cabinet.clear_knowledge() == 1
+    assert c.cabinet.recent_knowledge() == []

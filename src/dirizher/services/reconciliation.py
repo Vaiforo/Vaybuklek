@@ -23,6 +23,7 @@ log = get_logger("dirizher.reconcile")
 _DONE_WORDS = ["готов", "сделал", "закрыл", "done", "выполн", "заверш", "доделал", "залил"]
 _PROGRESS_WORDS = ["в работе", "делаю", "начал", "пилю", "in progress", "продолжаю", "ещё не"]
 _TOKEN_RE = re.compile(r"[а-яёa-z0-9]+", re.IGNORECASE)
+DIVIDER = "━━━━━━━━━━━━━━"
 
 
 def _tokens(text: str) -> set[str]:
@@ -99,7 +100,7 @@ class ReconciliationService:
         for t in open_tasks:
             by_assignee.setdefault((t.assignee or "—"), []).append(t)
 
-        lines = [f"🌙 <b>Вечерняя сверка</b> · {today.isoformat()}", ""]
+        lines = [f"🌙 <b>Вечерняя сверка</b> · {today.isoformat()}", DIVIDER]
         if not open_tasks:
             lines.append("Открытых задач нет — отличная работа! 🎉")
             return "\n".join(lines), []
@@ -108,13 +109,14 @@ class ReconciliationService:
         for assignee, tasks in sorted(by_assignee.items()):
             key = assignee.lstrip("@").lower()
             mark = "✅ отчитался" if key in reported else "🔕 нет отчёта"
-            lines.append(f"<b>{_esc(assignee)}</b> — {len(tasks)} откр. задач — {mark}")
-            for t in tasks:
-                lines.append(f"  • [{t.status.label_ru}] {_esc(t.title)} (до {_esc(t.deadline_display())})")
+            lines.append(f"👤 <b>{_esc(assignee)}</b> · открыто: <b>{len(tasks)}</b> · {mark}")
+            for t in sorted(tasks, key=lambda task: (task.deadline is None, task.deadline or date.max, task.title.lower())):
+                lines.append(f"  • <b>{_esc(t.title)}</b>")
+                lines.append(f"    🔸 {t.status.label_ru} · 📅 {_esc(t.deadline_display())}")
             if key not in reported and assignee != "—":
                 silent.append(self.team.mention_for(assignee))
             lines.append("")
 
         if silent:
-            lines.append("Не отписались: " + ", ".join(silent) + " — отметьтесь, пожалуйста 🙏")
+            lines.append("🙏 <b>Не отписались:</b> " + ", ".join(silent))
         return "\n".join(lines).strip(), silent

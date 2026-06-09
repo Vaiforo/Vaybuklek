@@ -49,11 +49,17 @@ HELP = """\
 /leaderboard — рейтинг команды по очкам 🏆
 /note текст — добавить личную заметку
 /notes — показать мои заметки
+/note_edit ID текст — отредактировать заметку
+/note_del ID — удалить заметку
+/notes_clear confirm — очистить мои заметки
 
 <b>База знаний</b>
 /kb — последние знания команды
 /kb add Заголовок | текст — добавить запись
 /kb find запрос — найти запись
+/kb edit ID Заголовок | текст — отредактировать запись
+/kb del ID — удалить запись
+/kb clear confirm — очистить базу знаний
 """
 
 
@@ -236,7 +242,61 @@ async def cmd_note(message: Message, command: CommandObject, c: AppContainer) ->
         await message.answer("🗒️ Напишите заметку после команды: <code>/note созвониться с дизайнером</code>")
         return
     note = c.cabinet.add_note(member, note_text)
-    await message.answer(f"🗒️ <b>Заметка сохранена</b>\n#{note.id} · {esc(note.text)}")
+    await message.answer(
+        "🗒️ <b>Заметка сохранена</b>\n"
+        f"━━━━━━━━━━━━━━\n<b>#{note.id}</b>\n{esc(note.text)}"
+    )
+
+
+@router.message(Command("note_edit", "edit_note"))
+async def cmd_note_edit(message: Message, command: CommandObject, c: AppContainer) -> None:
+    member = _member_from_message(message, c)
+    args = (command.args or "").strip()
+    raw_id, _, text = args.partition(" ")
+    if not raw_id.isdigit() or not text.strip():
+        await message.answer("✏️ Формат: <code>/note_edit ID новый текст</code>")
+        return
+    note = c.cabinet.edit_note(member, int(raw_id), text)
+    if note is None:
+        await message.answer(f"🗒️ Заметка #{esc(raw_id)} не найдена.")
+        return
+    await message.answer(
+        "✏️ <b>Заметка обновлена</b>\n"
+        f"━━━━━━━━━━━━━━\n<b>#{note.id}</b>\n{esc(note.text)}"
+    )
+
+
+@router.message(Command("note_del", "delete_note", "note_delete"))
+async def cmd_note_del(message: Message, command: CommandObject, c: AppContainer) -> None:
+    member = _member_from_message(message, c)
+    raw_id = (command.args or "").strip()
+    if not raw_id.isdigit():
+        await message.answer("🗑️ Формат: <code>/note_del ID</code>")
+        return
+    note = c.cabinet.delete_note(member, int(raw_id))
+    if note is None:
+        await message.answer(f"🗒️ Заметка #{esc(raw_id)} не найдена.")
+        return
+    await message.answer(
+        "🗑️ <b>Заметка удалена</b>\n"
+        f"━━━━━━━━━━━━━━\n<b>#{note.id}</b> · {esc(note.text)}"
+    )
+
+
+@router.message(Command("notes_clear", "clear_notes"))
+async def cmd_notes_clear(message: Message, command: CommandObject, c: AppContainer) -> None:
+    member = _member_from_message(message, c)
+    arg = (command.args or "").strip().lower()
+    total = len(c.cabinet.notes_for(member, limit=None))
+    if arg not in {"confirm", "yes", "да", "подтверждаю"}:
+        await message.answer(
+            "🧹 <b>Очистить все ваши заметки?</b>\n"
+            f"━━━━━━━━━━━━━━\nБудет удалено: <b>{total}</b>.\n"
+            "Для подтверждения отправьте: <code>/notes_clear confirm</code>"
+        )
+        return
+    removed = c.cabinet.clear_notes(member)
+    await message.answer(f"🧹 <b>Заметки очищены</b>\n━━━━━━━━━━━━━━\nУдалено: <b>{removed}</b>.")
 
 
 @router.message(Command("notes"))
@@ -260,10 +320,56 @@ async def cmd_kb(message: Message, command: CommandObject, c: AppContainer) -> N
             await message.answer("📚 Формат: <code>/kb add Заголовок | полезный текст</code>")
             return
         item = c.cabinet.add_knowledge(title, body, author)
-        await message.answer(f"📚 <b>Добавил в базу знаний</b>\n#{item.id} · {esc(item.title)}")
+        await message.answer(
+            "📚 <b>Добавил в базу знаний</b>\n"
+            f"━━━━━━━━━━━━━━\n<b>#{item.id} · {esc(item.title)}</b>\n{esc(item.text)}"
+        )
         return
-    if action.lower() in {"find", "search", "найди", "поиск"}:
+    action_l = action.lower()
+    if action_l in {"find", "search", "найди", "поиск"}:
         await message.answer(c.cabinet.render_knowledge(c.cabinet.search_knowledge(rest)))
+        return
+    if action_l in {"edit", "ред", "изменить"}:
+        raw_id, _, payload = rest.partition(" ")
+        title, sep, body = payload.partition("|")
+        if not raw_id.isdigit() or not sep or not body.strip():
+            await message.answer("✏️ Формат: <code>/kb edit ID Заголовок | новый текст</code>")
+            return
+        item = c.cabinet.edit_knowledge(int(raw_id), title, body, author)
+        if item is None:
+            await message.answer(f"📚 Запись #{esc(raw_id)} не найдена.")
+            return
+        await message.answer(
+            "✏️ <b>Запись БЗ обновлена</b>\n"
+            f"━━━━━━━━━━━━━━\n<b>#{item.id} · {esc(item.title)}</b>\n{esc(item.text)}"
+        )
+        return
+    if action_l in {"del", "delete", "rm", "удалить"}:
+        raw_id = rest.strip()
+        if not raw_id.isdigit():
+            await message.answer("🗑️ Формат: <code>/kb del ID</code>")
+            return
+        item = c.cabinet.delete_knowledge(int(raw_id))
+        if item is None:
+            await message.answer(f"📚 Запись #{esc(raw_id)} не найдена.")
+            return
+        await message.answer(
+            "🗑️ <b>Запись БЗ удалена</b>\n"
+            f"━━━━━━━━━━━━━━\n<b>#{item.id} · {esc(item.title)}</b>"
+        )
+        return
+    if action_l in {"clear", "clean", "очистить", "чистить"}:
+        confirm = rest.strip().lower()
+        total = len(c.cabinet.recent_knowledge(limit=10_000))
+        if confirm not in {"confirm", "yes", "да", "подтверждаю"}:
+            await message.answer(
+                "🧹 <b>Очистить всю базу знаний?</b>\n"
+                f"━━━━━━━━━━━━━━\nБудет удалено записей: <b>{total}</b>.\n"
+                "Для подтверждения отправьте: <code>/kb clear confirm</code>"
+            )
+            return
+        removed = c.cabinet.clear_knowledge()
+        await message.answer(f"🧹 <b>База знаний очищена</b>\n━━━━━━━━━━━━━━\nУдалено записей: <b>{removed}</b>.")
         return
     await message.answer(c.cabinet.render_knowledge(c.cabinet.search_knowledge(args)))
 
