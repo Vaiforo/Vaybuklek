@@ -32,10 +32,13 @@ from ..repository import TeamRegistry
 
 log = get_logger("dirizher.game")
 
-# ── Баланс начисления ────────────────────────────────────────────────────────
+# ── Единый стиль вывода и баланс начисления ──────────────────────────────────
+DIVIDER = "━━━━━━━━━━━━━━"
+EMPTY = "—"
+
 BASE_XP = 10
 PRIORITY_BONUS = {Priority.low: 0, Priority.medium: 5, Priority.high: 15}
-ON_TIME_BONUS = 10  # закрыл в срок (или у задачи нет дедлайна)
+ON_TIME_BONUS = 10  # бонус только за задачу с дедлайном, закрытую не позже срока
 
 # Ранги: (порог накопленного XP, название, эмодзи). Уровень = индекс+1.
 RANKS: list[tuple[int, str, str]] = [
@@ -77,15 +80,44 @@ ACHIEVEMENTS: list[tuple[str, str, "object"]] = [
 _ACH_TITLE = {code: title for code, title, _ in ACHIEVEMENTS}
 
 
+@dataclass(frozen=True)
+class XPBreakdown:
+    """Прозрачный расчёт XP за закрытую задачу."""
+
+    base: int
+    priority: int
+    deadline: int
+
+    @property
+    def total(self) -> int:
+        return self.base + self.priority + self.deadline
+
+    @property
+    def label(self) -> str:
+        parts = [f"база {self.base}"]
+        if self.priority:
+            parts.append(f"приоритет +{self.priority}")
+        if self.deadline:
+            parts.append(f"в срок +{self.deadline}")
+        return ", ".join(parts)
+
+
 # ── Чистое ядро ───────────────────────────────────────────────────────────────
 def is_on_time(task: Task, today: date) -> bool:
-    """В срок: дедлайна нет или закрыли не позже него."""
-    return task.deadline is None or today <= task.deadline
+    """В срок: только задача с дедлайном, закрытая не позже него."""
+    return task.deadline is not None and today <= task.deadline
+
+
+def xp_breakdown_for_completion(task: Task, *, on_time: bool) -> XPBreakdown:
+    return XPBreakdown(
+        base=BASE_XP,
+        priority=PRIORITY_BONUS.get(task.priority, 0),
+        deadline=ON_TIME_BONUS if on_time else 0,
+    )
 
 
 def xp_for_completion(task: Task, *, on_time: bool) -> int:
-    bonus = PRIORITY_BONUS.get(task.priority, 0)
-    return BASE_XP + bonus + (ON_TIME_BONUS if on_time else 0)
+    return xp_breakdown_for_completion(task, on_time=on_time).total
 
 
 def rank_for(xp: int) -> tuple[int, str, str, int | None]:
@@ -126,6 +158,7 @@ class Celebration:
     display: str
     xp_gained: int
     total_xp: int
+    breakdown: str
     level: int
     rank_name: str
     rank_emoji: str
@@ -135,7 +168,11 @@ class Celebration:
     @property
     def line(self) -> str:
         """Короткая (без спама) строка-поздравление в HTML."""
-        parts = [f"🎮 <b>{_esc(self.display)}</b> +{self.xp_gained} XP"]
+        parts = [
+            f"🎮 <b>{_esc(self.display)}</b>: +{self.xp_gained} XP",
+            f"({self.breakdown})",
+            f"· всего {self.total_xp} XP",
+        ]
         if self.leveled_up:
             parts.append(f"· уровень {self.level} {self.rank_emoji} «{self.rank_name}» 🆙")
         if self.new_achievements:
@@ -236,7 +273,8 @@ class GamificationService:
         p.done_task_ids.append(task.id)
 
         on_time = is_on_time(task, today)
-        gain = xp_for_completion(task, on_time=on_time)
+        breakdown = xp_breakdown_for_completion(task, on_time=on_time)
+        gain = breakdown.total
         old_level, *_ = rank_for(p.xp)
 
         p.xp += gain
@@ -259,6 +297,7 @@ class GamificationService:
             display=p.display_name or display,
             xp_gained=gain,
             total_xp=p.xp,
+            breakdown=breakdown.label,
             level=level,
             rank_name=name,
             rank_emoji=emoji,
@@ -283,36 +322,48 @@ class GamificationService:
         key, _ = self._identify(raw_name)
         return self._players.get(key)
 
+    def _render_player_profile(self, p: PlayerProfile, display: str) -> str:
+        level, name, emoji, nxt = rank_for(p.xp)
+        if nxt:
+            progress = f"📈 До уровня {level + 1}: {max(0, nxt - p.xp)} XP · {progress_bar(p.xp)}"
+        else:
+            progress = f"📈 Максимальный ранг · {progress_bar(p.xp)}"
+        achievements = [_ACH_TITLE.get(code, code) for code in p.achievements]
+
+        lines = [
+            "🎮 <b>Игровой профиль</b>",
+            DIVIDER,
+            f"👤 <b>{_esc(p.display_name or display or p.key)}</b>",
+            f"🏅 Ранг: {emoji} <b>{_esc(name)}</b> · уровень {level}",
+            f"⭐ XP: <b>{p.xp}</b>",
+            progress,
+            f"✅ Закрыто: {p.tasks_done} · 🎯 в срок: {p.on_time} · 🔥 серия: {p.streak_days} дн.",
+        ]
+        if achievements:
+            lines += ["", "🏆 <b>Ачивки</b>", *[f"• {title}" for title in achievements[:8]]]
+        else:
+            lines += ["", "🏆 Ачивки: пока нет"]
+        return "\n".join(lines)
+
     def render_profile(self, raw_name: str) -> str:
         p = self.profile_for(raw_name)
-        key, display = self._identify(raw_name)
-        if p is None or p.xp == 0:
-            return (
-                f"🎮 <b>{_esc(display or 'Профиль')}</b>\n"
-                "Пока нет очков. Закройте задачу — и начнём прокачку! ⚔️"
-            )
-        level, name, emoji, nxt = rank_for(p.xp)
-        achs = ", ".join(_ACH_TITLE.get(c, c) for c in p.achievements) or "— пока нет"
-        tail = f"\nДо следующего уровня: {nxt - p.xp} XP" if nxt else "\nМаксимальный ранг! 👑"
-        return (
-            f"🎮 <b>{_esc(p.display_name or display)}</b> — {emoji} {name} (ур. {level})\n"
-            f"⭐ XP: <b>{p.xp}</b>  {progress_bar(p.xp)}\n"
-            f"✅ Закрыто: {p.tasks_done}  ·  🎯 в срок: {p.on_time}  ·  🔥 серия: {p.streak_days} дн.\n"
-            f"🏆 Ачивки: {achs}"
-            f"{tail}"
-        )
+        _key, display = self._identify(raw_name)
+        if p is None:
+            p = PlayerProfile(key=_key or raw_name, display_name=display)
+        return self._render_player_profile(p, display)
 
     def render_leaderboard(self, limit: int = 10) -> str:
         top = self.leaderboard(limit)
         if not top:
             return "🏆 <b>Лидерборд пуст</b>\nЗакройте первую задачу — и возглавьте таблицу!"
         medals = ["🥇", "🥈", "🥉"]
-        lines = ["🏆 <b>Лидерборд</b>", ""]
+        lines = ["🏆 <b>Лидерборд</b>", DIVIDER]
         for i, p in enumerate(top):
             place = medals[i] if i < 3 else f"{i + 1}."
-            _lvl, name, emoji, _ = rank_for(p.xp)
+            level, name, emoji, nxt = rank_for(p.xp)
+            next_part = "MAX" if nxt is None else f"до ур. {level + 1}: {nxt - p.xp} XP"
             lines.append(
-                f"{place} <b>{_esc(p.display_name or p.key)}</b> — {p.xp} XP "
-                f"{emoji} {name} · ✅{p.tasks_done}"
+                f"{place} <b>{_esc(p.display_name or p.key)}</b> — {p.xp} XP · "
+                f"{emoji} {name} ур. {level} · ✅ {p.tasks_done} · {next_part}"
             )
         return "\n".join(lines)

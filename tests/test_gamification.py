@@ -16,6 +16,7 @@ from dirizher.services.gamification import (
     is_on_time,
     rank_for,
     xp_for_completion,
+    xp_breakdown_for_completion,
     _streak_after,
 )
 
@@ -36,15 +37,18 @@ def _task(title="Задача", assignee="danya_skiba", priority=Priority.medium
 
 
 # ── Чистое ядро ──────────────────────────────────────────────────────────────
-def test_xp_priority_and_ontime():
+def test_xp_priority_deadline_bonus_and_breakdown():
     high_ontime = _task(priority=Priority.high, deadline=TODAY)
-    assert xp_for_completion(high_ontime, on_time=True) == BASE_XP + 15 + 10
-    low_late = _task(priority=Priority.low)
-    assert xp_for_completion(low_late, on_time=False) == BASE_XP
+    breakdown = xp_breakdown_for_completion(high_ontime, on_time=True)
+    assert breakdown.total == BASE_XP + 15 + 10
+    assert breakdown.label == "база 10, приоритет +15, в срок +10"
+
+    low_without_deadline = _task(priority=Priority.low, deadline=None)
+    assert xp_for_completion(low_without_deadline, on_time=False) == BASE_XP
 
 
 def test_on_time_rules():
-    assert is_on_time(_task(deadline=None), TODAY) is True  # без срока — не штрафуем
+    assert is_on_time(_task(deadline=None), TODAY) is False  # нет дедлайна — нет бонуса «в срок»
     assert is_on_time(_task(deadline=TODAY), TODAY) is True
     assert is_on_time(_task(deadline=TODAY - timedelta(days=1)), TODAY) is False
 
@@ -67,7 +71,7 @@ def test_streak_logic():
 def test_award_and_idempotent(game):
     t = _task(priority=Priority.high, deadline=TODAY)
     lines = game.complete(t, today=TODAY)
-    assert lines and "XP" in lines[0]
+    assert lines and "XP" in lines[0] and "база" in lines[0]
     p = game.profile_for("danya_skiba")
     assert p.xp == BASE_XP + 15 + 10 and p.tasks_done == 1
 
@@ -123,3 +127,18 @@ def test_persistence_roundtrip(tmp_path):
     # новый сервис читает тот же файл
     g2 = GamificationService(GameStore(path), team)
     assert g2.profile_for("danya_skiba").tasks_done == 1
+
+
+def test_render_profile_uses_unified_game_layout(game):
+    game.complete(_task(priority=Priority.high, deadline=TODAY), today=TODAY)
+    text = game.render_profile("danya_skiba")
+    assert "Игровой профиль" in text
+    assert "━━━━━━━━━━━━━━" in text
+    assert "XP" in text and "Ранг" in text
+
+
+def test_no_deadline_task_does_not_count_as_on_time(game):
+    game.complete(_task(priority=Priority.medium, deadline=None), today=TODAY)
+    p = game.profile_for("danya_skiba")
+    assert p.xp == BASE_XP + 5
+    assert p.on_time == 0

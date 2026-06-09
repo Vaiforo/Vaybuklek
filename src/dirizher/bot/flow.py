@@ -36,13 +36,12 @@ async def notify_assignee(bot: Bot, c: AppContainer, created, chat_id: int) -> N
     member = c.team.resolve(created.assignee)
     if not member or not member.dm_chat_id or member.dm_chat_id == chat_id:
         return
-    stats = c.cabinet.stats_for(member)
     await send_with_fallback(
         bot,
         member.dm_chat_id,
         "🎯 <b>Вам назначена задача</b>\n\n"
         + tx.render_task_card(created, header="📌 Назначение")
-        + f"\n\n🎮 Сейчас: уровень {stats.level}, {stats.xp} XP",
+        + "\n\n🎮 XP начислю, когда задача перейдёт в «Готово».",
         fallback_chat_id=chat_id,
     )
 

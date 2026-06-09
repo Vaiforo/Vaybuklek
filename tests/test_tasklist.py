@@ -62,3 +62,17 @@ def test_board_keyboard_delete_confirmation_preserves_current_status():
     assert any(label.startswith("✓ ") and "В работу" in label for label in labels)
     assert any("Да, удалить" in label for label in labels)
     assert any("Отмена" in label for label in labels)
+
+
+def test_render_board_has_single_section_per_status():
+    from dirizher.bot.text import render_board
+
+    text = render_board([
+        BoardCard(id="todo-1", title="Сделать бота", status=TaskStatus.todo, assignee="Данила"),
+        BoardCard(id="done-1", title="Проверить UI", status=TaskStatus.done),
+    ])
+
+    assert text.count("К выполнению") == 1
+    assert text.count("В работе") == 1
+    assert text.count("Готово") == 1
+    assert "Сделать бота · 👤 Данила" in text

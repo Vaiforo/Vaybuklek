@@ -138,17 +138,25 @@ class YouGileBoard:
             timeout=20.0,
         )
 
-    async def create_card(self, task: Task) -> str:
-        payload: dict = {"title": task.title}
-        col = self._columns.get(task.status)
+    def _status_payload(self, status: TaskStatus) -> dict:
+        body: dict = {"completed": status == TaskStatus.done}
+        col = self._columns.get(status)
         if col:
-            payload["columnId"] = col
+            body["columnId"] = col
+        return body
+
+    def _task_payload(self, task: Task) -> dict:
+        body: dict = {"title": task.title, **self._status_payload(task.status)}
         if task.requirements:
-            payload["description"] = task.requirements
+            body["description"] = task.requirements
         if task.deadline:
-            payload["deadline"] = _deadline_obj(task.deadline, task.deadline_time)
+            body["deadline"] = _deadline_obj(task.deadline, task.deadline_time)
         if task.assignee_yougile_ids:
-            payload["assigned"] = task.assignee_yougile_ids
+            body["assigned"] = task.assignee_yougile_ids
+        return body
+
+    async def create_card(self, task: Task) -> str:
+        payload = self._task_payload(task)
         r = await self._http.post("/tasks", json=payload)
         r.raise_for_status()
         card_id = r.json().get("id", "")
@@ -156,31 +164,16 @@ class YouGileBoard:
         return card_id
 
     async def move_card(self, card_id: str, status: TaskStatus) -> None:
-        col = self._columns.get(status)
-        body: dict = {}
-        if col:
-            body["columnId"] = col
-        # completed синхронизируем со статусом: done → True, иначе снимаем флаг
-        body["completed"] = status == TaskStatus.done
-        r = await self._http.put(f"/tasks/{card_id}", json=body)
+        # YouGile не переносит карточку в колонку «Готово» только по completed=True.
+        # Поэтому всегда отправляем и columnId, и completed в одном payload.
+        r = await self._http.put(f"/tasks/{card_id}", json=self._status_payload(status))
         r.raise_for_status()
 
     async def complete_card(self, card_id: str) -> None:
-        r = await self._http.put(f"/tasks/{card_id}", json={"completed": True})
-        r.raise_for_status()
+        await self.move_card(card_id, TaskStatus.done)
 
     async def update_card(self, card_id: str, task: Task) -> None:
-        body: dict = {"title": task.title}
-        if task.requirements:
-            body["description"] = task.requirements
-        if task.deadline:
-            body["deadline"] = _deadline_obj(task.deadline, task.deadline_time)
-        col = self._columns.get(task.status)
-        if col:
-            body["columnId"] = col
-        if task.assignee_yougile_ids:
-            body["assigned"] = task.assignee_yougile_ids
-        r = await self._http.put(f"/tasks/{card_id}", json=body)
+        r = await self._http.put(f"/tasks/{card_id}", json=self._task_payload(task))
         r.raise_for_status()
 
     async def delete_card(self, card_id: str) -> None:
