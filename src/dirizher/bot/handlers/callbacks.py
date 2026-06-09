@@ -253,7 +253,7 @@ async def on_board_action(cb: CallbackQuery, callback_data: BoardCD, c: AppConta
         await cb.answer("Задача в корзине. Восстановите через /task_restore", show_alert=False)
         return
 
-    # Смена статуса (todo / in_progress / done)
+    # Смена статуса (todo / in_progress / done). Просрочка выставляется автоматически по дедлайну.
     if action in _BOARD_STATUS:
         status = _BOARD_STATUS[action]
         task = task_for_acl

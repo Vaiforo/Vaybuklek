@@ -311,11 +311,11 @@ class PersonalCabinet:
 
     def render_knowledge(self, items: list[KnowledgeItem]) -> str:
         if not items:
-            return "📚 В базе знаний пока ничего не найдено. Добавьте: <code>/kb add Заголовок | текст</code>"
+            return "📚 В базе знаний пока ничего не найдено. Добавьте: <code>/kb_add Заголовок | текст</code>"
         lines = [
             f"📚 <b>База знаний команды</b> · {len(items)}",
             DIVIDER,
-            "✏️ <code>/kb edit ID Заголовок | текст</code> · 🗑️ <code>/kb del ID</code> · 🧹 <code>/kb clear</code>",
+            "✏️ <code>/kb_edit ID Заголовок | текст</code> · 🗑️ <code>/kb_del ID</code> · 🧹 <code>/kb_clear</code>",
             "",
         ]
         for item in items:

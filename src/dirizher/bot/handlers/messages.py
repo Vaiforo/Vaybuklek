@@ -158,6 +158,16 @@ async def on_text(message: Message, c: AppContainer, state: FSMContext) -> None:
         await task_commands.handle(message, c, cmd)
         return
 
+    # Новые задачи можно назначать только в групповых чатах: в личке бот показывает
+    # общий личный список, но не создаёт карточки, чтобы не смешивать контексты бесед.
+    if _is_private(message):
+        if any(cmd in text.lower() for cmd in TASK_COMMANDS) or looks_taskish(text, _team_names(c)):
+            await message.answer(
+                "📌 Новые задачи я создаю только в рабочей беседе/конфе. "
+                "В личке можно смотреть все свои задачи: /tasks."
+            )
+        return
+
     # Предфильтр: на заведомый мусор (приветствия/реакции/короткие вопросы) не
     # тратим вызов LLM. При любом намёке на задачу — пропускаем дальше.
     if not looks_taskish(text, _team_names(c)):
@@ -170,8 +180,12 @@ async def on_text(message: Message, c: AppContainer, state: FSMContext) -> None:
         excerpt=text[:200],
     )
     history = c.history.recent(chat_id, limit=10)
-    processed = await c.service.ingest(text, source, history=history, sender=member)
-    processed = [p for p in processed if can_create_task(member, p.task, c.team)]
+    extracted_tasks = await c.service.ingest(text, source, history=history, sender=member)
+    processed = [p for p in extracted_tasks if can_create_task(member, p.task, c.team)]
+    # Если задача распознана, но автор не имеет права её создавать, молчим: это
+    # не ошибка формулировки, а запрет для обычного пользователя.
+    if extracted_tasks and not processed:
+        return
 
     if processed:
         await present(message.bot, c, processed, chat_id)

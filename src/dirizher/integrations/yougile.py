@@ -127,6 +127,7 @@ class YouGileBoard:
         self._columns = {
             TaskStatus.todo: cfg.column_todo,
             TaskStatus.in_progress: cfg.column_in_progress,
+            TaskStatus.overdue: cfg.column_overdue,
             TaskStatus.done: cfg.column_done,
         }
         # обратная карта columnId -> статус, чтобы /board показывал реальную колонку

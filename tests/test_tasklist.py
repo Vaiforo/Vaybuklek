@@ -78,3 +78,54 @@ def test_render_board_has_single_section_per_status():
     assert "<b>Статус:</b> К выполнению" in text
     assert "<b>Исполнитель:</b> Данила" in text
     assert "<b>Дедлайн:</b> без срока" in text
+
+
+def test_render_board_marks_past_deadline_as_overdue():
+    from datetime import date, timedelta
+
+    from dirizher.bot.text import render_board
+
+    text = render_board([
+        BoardCard(
+            id="late-1",
+            title="Просроченная задача",
+            status=TaskStatus.todo,
+            deadline=date.today() - timedelta(days=1),
+        )
+    ])
+
+    assert "<b>Просроченные</b> · 1" in text
+    assert "<b>Статус:</b> Просроченные" in text
+
+
+def test_board_keyboard_has_no_manual_overdue_button():
+    kb = board_task_keyboard("card1", TaskStatus.todo)
+    labels = [b.text for row in kb.inline_keyboard for b in row]
+    assert not any("Просроч" in label for label in labels)
+
+
+def test_tasks_command_target_can_be_plain_username():
+    from dirizher.bot.handlers.commands import _resolve_target
+    from dirizher.container import AppContainer
+
+    c = AppContainer()
+    member = c.team.register(TeamMember(user_id=42, username="alice", full_name="Alice"))
+
+    target, label, is_self = _resolve_target(c, "alice", author=None)
+
+    assert target is member
+    assert label == "@alice"
+    assert is_self is False
+
+
+def test_main_help_is_split_into_sections():
+    from dirizher.bot.handlers import commands
+
+    assert "/help_meetings" in commands.HELP
+    assert "/help_profile" in commands.HELP
+    assert "/help_kb" in commands.HELP
+    assert "/help_admin" in commands.HELP
+    assert "/enroll_voice" not in commands.HELP
+    assert "/enroll_voice" in commands.HELP_MEETINGS
+    assert "/kb_add" in commands.HELP_KB
+    assert "/team_create" in commands.HELP_ADMIN

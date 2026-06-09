@@ -20,8 +20,20 @@ MAX_BOARD_ITEMS_PER_STATUS = 12
 STATUS_EMOJI = {
     TaskStatus.todo: "📋",
     TaskStatus.in_progress: "▶️",
+    TaskStatus.overdue: "🔥",
     TaskStatus.done: "✅",
 }
+
+
+def _is_overdue(deadline, status: TaskStatus) -> bool:
+    return bool(deadline and deadline < date.today() and status is not TaskStatus.done)
+
+
+def effective_status(obj) -> TaskStatus:
+    status = getattr(obj, "status", TaskStatus.todo)
+    if _is_overdue(getattr(obj, "deadline", None), status):
+        return TaskStatus.overdue
+    return status
 
 
 def _section(title: str) -> list[str]:
@@ -41,6 +53,10 @@ def render_task_card(task: Task, *, header: str = "🆕 Новая задача"
         lines.append(f"📝 {esc(task.requirements)}")
     lines += [
         _line("👤 Исполнитель:", task.assignee),
+    ]
+    if task.team_id is None:
+        lines.append(_line("👥 Команда:", None))
+    lines += [
         _line("📅 Дедлайн:", task.deadline_display()),
         f"{task.priority.emoji} <b>Приоритет:</b> {esc(task.priority.label_ru)}",
     ]
@@ -80,7 +96,7 @@ def _render_card_lines(card, number: int) -> list[str]:
         title = title[:93] + "…"
     lines = [
         f"  <b>{number}. {title}</b>",
-        f"     🔸 <b>Статус:</b> {esc(card.status.label_ru)}",
+        f"     🔸 <b>Статус:</b> {esc(effective_status(card).label_ru)}",
         f"     👤 <b>Исполнитель:</b> {esc(assignee)}",
         f"     📅 <b>Дедлайн:</b> {esc(due)}",
     ]
@@ -98,10 +114,10 @@ def render_board(cards) -> str:  # cards: list[BoardCard]
 
     buckets = {status: [] for status in TaskStatus}
     for card in cards:
-        buckets[card.status].append(card)
+        buckets[effective_status(card)].append(card)
 
     total = len(cards)
-    active = sum(1 for card in cards if card.status is not TaskStatus.done)
+    active = sum(1 for card in cards if effective_status(card) is not TaskStatus.done)
     done = total - active
     lines = _section("🗂️ <b>Канбан-доска</b>")
     lines.append(f"Всего: {total} · Активных: {active} · Готово: {done}")
@@ -133,7 +149,7 @@ def render_board_task(card) -> str:  # card: BoardCard
     lines = [
         f"📋 <b>{esc(card.title)}</b>",
         DIVIDER,
-        f"🔸 <b>Статус:</b> {esc(card.status.label_ru)}",
+        f"🔸 <b>Статус:</b> {esc(effective_status(card).label_ru)}",
         f"👤 <b>Исполнитель:</b> {esc(assignee)}",
         f"📅 <b>Дедлайн:</b> {esc(due)}",
     ]
@@ -159,10 +175,11 @@ def render_tasks(tasks: list[Task], *, title: str = "Ваши открытые �
     ordered = sorted(tasks, key=lambda t: (t.deadline is None, t.deadline or date.max, t.title.lower()))
     lines = _section(f"📋 <b>{esc(title)}</b>")
     for idx, task in enumerate(ordered, start=1):
-        marker = "🔥" if task.deadline and task.completed_at is None else "•"
+        status = effective_status(task)
+        marker = "🔥" if status is TaskStatus.overdue else "•"
         lines.extend([
             f"{marker} <b>{idx}. {esc(task.title)}</b>",
-            f"   🔸 {esc(task.status.label_ru)} · {esc(task.priority.label_ru)} {task.priority.emoji}",
+            f"   🔸 {esc(status.label_ru)} · {esc(task.priority.label_ru)} {task.priority.emoji}",
             f"   📅 {esc(task.deadline_display())}",
         ])
         if task.assignee:

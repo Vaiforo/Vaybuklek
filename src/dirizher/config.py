@@ -87,6 +87,7 @@ class YouGileSettings(BaseSettings):
     base_url: str = "https://ru.yougile.com/api-v2"
     column_todo: str = ""
     column_in_progress: str = ""
+    column_overdue: str = ""
     column_done: str = ""
 
     @property

@@ -6,7 +6,7 @@ import pytest
 
 from dirizher.container import AppContainer
 from dirizher.domain.enums import TaskSource
-from dirizher.domain.models import SourceRef, TeamMember
+from dirizher.domain.models import SourceRef, Team, TeamMember
 
 TODAY = date(2026, 6, 7)  # суббота
 
@@ -43,14 +43,15 @@ async def test_unique_name_not_ambiguous(c):
     assert p.task.assignee == "danya"  # нормализован к username
 
 
-# ── #2: исполнитель не указан → берём автора сообщения ───────────────────────
-async def test_assignee_falls_back_to_sender(c):
+# ── #2: исполнитель не указан → задача остаётся обезличенной ─────────────────
+async def test_missing_assignee_stays_unassigned_even_with_sender(c):
     sender = c.team.get_by_user_id(3)
     processed = await c.service.ingest(
         "Нужно сделать отчёт к среде", _src(), today=TODAY, sender=sender
     )
     p = processed[0]
-    assert p.task.assignee == "danya"
+    assert p.task.assignee is None
+    assert p.task.team_id is None
     assert p.ambiguous == []
 
 
@@ -59,3 +60,19 @@ async def test_no_sender_keeps_assignee_none(c):
     processed = await c.service.ingest("Нужно сделать отчёт к среде", _src(), today=TODAY)
     p = processed[0]
     assert p.task.assignee is None
+
+
+async def test_multiteam_assignee_uses_sender_leader_team():
+    cont = AppContainer()
+    team_a = cont.team.add_team(Team(name="A"))
+    team_b = cont.team.add_team(Team(name="B"))
+    worker = cont.team.register(TeamMember(user_id=10, username="worker", full_name="Worker", aliases=["Вася"]))
+    leader = cont.team.register(TeamMember(user_id=11, username="lead", full_name="Lead"))
+    cont.team.assign_member_to_team(worker, team_a)
+    cont.team.assign_member_to_team(worker, team_b)
+    cont.team.assign_member_to_team(leader, team_b, leader=True)
+
+    processed = await cont.service.ingest("Вася, сделай отчёт к среде", _src(), today=TODAY, sender=leader)
+
+    assert processed[0].task.assignee == "worker"
+    assert processed[0].task.team_id == team_b.id
