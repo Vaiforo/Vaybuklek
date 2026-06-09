@@ -9,6 +9,8 @@
 
 `/enroll_voice` — записать голосовой отпечаток участника, чтобы на встречах
 Speaker_1 заменялся реальным именем.
+`/who Speaker_1 Имя` — дообучить голос неопознанного спикера ПРЯМО ИЗ записи
+последней встречи (реальные loopback-условия) — точнее, чем чистый микрофон.
 """
 
 from __future__ import annotations
@@ -57,6 +59,7 @@ def _diarize_segments(c: AppContainer, path: str, segments: list) -> None:
         registry=c.speakers,
         name_threshold=audio.voiceprint_name_threshold,
         merge_threshold=audio.speaker_merge_similarity,
+        device=audio.device,
     ):
         return
     assign_speakers_by_voice(
@@ -87,6 +90,50 @@ async def _diarize_meeting(c: AppContainer, path: str, transcript) -> None:
         log.exception("Диаризация встречи пропущена")
 
 
+def _discard_file(path: str | None) -> None:
+    if not path:
+        return
+    try:
+        Path(path).unlink(missing_ok=True)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _remember_meeting(c: AppContainer, chat_id: int, path: str, segments: list) -> None:
+    """Запомнить запись чата для дообучения голосов; прежнюю запись удалить."""
+    prev = c.recent_meetings.get(chat_id)
+    if prev and prev.get("path") != path:
+        _discard_file(prev.get("path"))
+    c.recent_meetings[chat_id] = {"path": path, "segments": list(segments)}
+
+
+def _unnamed_labels(segments: list) -> list[str]:
+    """Метки неопознанных спикеров (Speaker_N) в порядке появления."""
+    seen: list[str] = []
+    for s in segments:
+        spk = str(getattr(s, "speaker", ""))
+        if spk.startswith("Speaker_") and spk not in seen:
+            seen.append(spk)
+    return seen
+
+
+async def _suggest_learning(c: AppContainer, bot, chat_id: int, segments: list) -> None:
+    """Подсказать /who, если в записи остались неопознанные спикеры."""
+    if c.embedder is None:
+        return
+    labels = _unnamed_labels(segments)
+    if not labels:
+        return
+    example = labels[0]
+    await bot.send_message(
+        chat_id,
+        "🎓 Кого-то отметил как "
+        + ", ".join(f"<b>{esc(l)}</b>" for l in labels)
+        + ". Подпишите голос — запомню его из этой записи (loopback-условия):\n"
+        + f"<code>/who {example} Имя</code>",
+    )
+
+
 async def _process_recording(c: AppContainer, bot, chat_id: int, path: str | None, reason: str) -> None:
     """Колбэк по завершении записи: распознать, выделить задачи, отчитаться."""
     c.active_meetings.pop(chat_id, None)
@@ -104,19 +151,22 @@ async def _process_recording(c: AppContainer, bot, chat_id: int, path: str | Non
     except Exception as e:  # noqa: BLE001
         log.exception("Сбой распознавания встречи")
         await bot.send_message(chat_id, f"Не смог распознать встречу 😕\n<code>{esc(str(e))}</code>")
+        _discard_file(path)
         return
-    finally:
-        try:
-            Path(path).unlink(missing_ok=True)
-        except Exception:  # noqa: BLE001
-            pass
 
     if transcript.is_mock or not transcript.text.strip():
         await bot.send_message(chat_id, "Речь на встрече не распознана.")
+        _discard_file(path)
         return
 
     result = await c.meeting.process(transcript, chat_id=chat_id)
     await bot.send_message(chat_id, "📝 <b>Саммари встречи</b>\n" + esc(result.summary))
+
+    # Запись + сегменты держим, чтобы командой /who дообучить голос неопознанного
+    # спикера из реальных loopback-условий (см. cmd_who). Предыдущую запись чата
+    # удаляем. Подсказываем, как подписать, если остались Speaker_N.
+    _remember_meeting(c, chat_id, path, transcript.segments)
+    await _suggest_learning(c, bot, chat_id, transcript.segments)
 
     if not result.processed:
         await bot.send_message(chat_id, "Задач из встречи не выделил.")
@@ -209,8 +259,18 @@ async def on_enroll_voice(message: Message, c: AppContainer, state: FSMContext) 
         file = await message.bot.get_file(media.file_id)
         await message.bot.download_file(file.file_path, destination=path)
         emb = await asyncio.to_thread(c.embedder.embed_file, path)
-        c.speakers.enroll(name, emb)
-        await message.answer(f"✅ Запомнил голос: <b>{esc(name)}</b>. На встречах подпишу ваши реплики.")
+        count = c.speakers.enroll(name, emb)
+        hint = (
+            "\n💡 Голос на созвоне звучит иначе, чем в этой записи (кодек связи). "
+            "Чтобы узнавал точнее — пришлите <code>/enroll_voice</code> ещё раз, "
+            "лучше прямо во время/после созвона."
+            if count < 2
+            else ""
+        )
+        await message.answer(
+            f"✅ Запомнил голос: <b>{esc(name)}</b> (образцов: {count}). "
+            f"На встречах подпишу ваши реплики.{hint}"
+        )
     except Exception as e:  # noqa: BLE001
         log.exception("Сбой регистрации голоса")
         await message.answer(f"Не смог запомнить голос 😕\n<code>{esc(str(e))}</code>")
@@ -219,3 +279,67 @@ async def on_enroll_voice(message: Message, c: AppContainer, state: FSMContext) 
             Path(path).unlink(missing_ok=True)
         except Exception:  # noqa: BLE001
             pass
+
+
+def _learn_voice_from_meeting(c: AppContainer, meeting: dict, label: str, name: str) -> int:
+    """Извлечь голос спикера `label` из записи встречи и зарегистрировать на `name`.
+
+    Берём все реплики этого спикера (с таймкодами) и усредняем их эмбеддинг через
+    embed_turns — отпечаток в РЕАЛЬНЫХ loopback-условиях созвона, что закрывает
+    разрыв с чистым микрофоном при /enroll_voice. Возвращает число образцов имени;
+    -1 — если у спикера нет пригодных реплик. Синхронно (модели тяжёлые).
+    """
+    segs = [
+        s for s in meeting["segments"]
+        if str(getattr(s, "speaker", "")) == label and s.start is not None and s.end is not None
+    ]
+    if not segs:
+        return -1
+    turns = [(s.start, s.end, label) for s in segs]
+    embs = c.embedder.embed_turns(meeting["path"], turns)
+    vec = embs.get(label)
+    if not vec:
+        return -1
+    return c.speakers.enroll(name, vec)
+
+
+@router.message(Command("who"))
+async def cmd_who(message: Message, c: AppContainer) -> None:
+    """`/who Speaker_1 Имя` — запомнить голос спикера из последней записи встречи."""
+    if c.embedder is None:
+        await message.answer(
+            "🎙️ Дообучение голоса доступно при включённом распознавании "
+            "(<code>DIRIZHER_AUDIO__ENABLED=true</code>)."
+        )
+        return
+    parts = (message.text or "").split(maxsplit=2)
+    if len(parts) < 3 or not parts[2].strip():
+        await message.answer(
+            "Формат: <code>/who Speaker_1 Имя</code> — запомню голос этого спикера "
+            "из последней встречи (метки видны в саммари)."
+        )
+        return
+    label, raw_name = parts[1].strip(), parts[2].strip()
+    meeting = c.recent_meetings.get(message.chat.id)
+    if not meeting:
+        await message.answer("Нет недавней записи встречи для обучения. Запишите встречу и повторите.")
+        return
+    # Имя приводим к канону команды (как в /enroll_voice): @username/алиас → ФИО.
+    member = c.team.resolve(raw_name.lstrip("@"))
+    name = (member.full_name if member else None) or raw_name
+    try:
+        count = await asyncio.to_thread(_learn_voice_from_meeting, c, meeting, label, name)
+    except Exception as e:  # noqa: BLE001
+        log.exception("Сбой дообучения голоса из встречи")
+        await message.answer(f"Не смог запомнить голос 😕\n<code>{esc(str(e))}</code>")
+        return
+    if count < 0:
+        await message.answer(
+            f"В последней встрече нет пригодных реплик «{esc(label)}» "
+            "(слишком короткие или метки не совпали). Проверьте метку в саммари."
+        )
+        return
+    await message.answer(
+        f"✅ Запомнил голос <b>{esc(name)}</b> из записи встречи "
+        f"(образцов: {count}). Теперь буду узнавать его на созвонах."
+    )

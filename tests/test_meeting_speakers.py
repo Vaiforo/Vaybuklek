@@ -32,6 +32,25 @@ def test_stop_reason_silence_and_timeout():
     assert _stop_reason(9999, 100, silence_limit=0, max_s=10800) is None
 
 
+# ── Переключатель устройства CPU/GPU ─────────────────────────────────────────
+def test_resolve_device_respects_preference(monkeypatch):
+    from dirizher.audio import pyannote_compat as pc
+
+    # CUDA доступна: cuda/auto → cuda, cpu → форс CPU
+    monkeypatch.setattr(pc, "_cuda_available", lambda: True)
+    assert pc.resolve_device("cuda") == "cuda"
+    assert pc.resolve_device("auto") == "cuda"
+    assert pc.resolve_device("") == "cuda"
+    assert pc.resolve_device("CPU") == "cpu"  # регистр и форс CPU
+    assert pc.cuda_device("cpu") is None      # на CPU устройство не отдаём
+
+    # CUDA недоступна: cuda → безопасный откат на CPU
+    monkeypatch.setattr(pc, "_cuda_available", lambda: False)
+    assert pc.resolve_device("cuda") == "cpu"
+    assert pc.resolve_device("auto") == "cpu"
+    assert pc.cuda_device("auto") is None
+
+
 # ── Голосовые отпечатки: enroll/identify ─────────────────────────────────────
 def test_voiceprint_enroll_and_identify(tmp_path):
     reg = SpeakerRegistry(str(tmp_path / "vp.json"), threshold=0.9)
@@ -71,6 +90,36 @@ def test_pipeline_resolves_known_speaker_by_voice(tmp_path):
     label_map = pipe._resolve_speakers("ignored.wav", turns)
     assert label_map["SPEAKER_00"] == "Данила"  # узнан по голосу
     assert label_map["SPEAKER_01"] == "Speaker_1"  # неизвестный → аноним
+
+
+def test_learn_voice_from_meeting_enrolls_loopback_print(tmp_path):
+    """/who извлекает голос спикера из записи встречи и регистрирует его."""
+    from dirizher.audio.transcriber import Segment
+    from dirizher.bot.handlers.meeting import _learn_voice_from_meeting
+
+    reg = SpeakerRegistry(str(tmp_path / "vp.json"), threshold=0.5)
+
+    class FakeEmbedder:
+        def embed_turns(self, wav, turns):
+            label = turns[0][2]  # все реплики одного спикера
+            return {label: [0.0, 1.0]}
+
+    class C:
+        embedder = FakeEmbedder()
+        speakers = reg
+
+    segs = [
+        Segment(speaker="Speaker_1", text="привет", start=0.0, end=2.0),
+        Segment(speaker="Speaker_2", text="ага", start=2.0, end=4.0),
+        Segment(speaker="Speaker_1", text="ещё", start=4.0, end=6.0),
+    ]
+    meeting = {"path": "x.wav", "segments": segs}
+
+    count = _learn_voice_from_meeting(C(), meeting, "Speaker_1", "Энди")
+    assert count == 1
+    assert reg.identify([0.0, 1.0]) == "Энди"  # узнаём по loopback-отпечатку
+    # метки нет в записи → -1 (без обращения к эмбеддеру)
+    assert _learn_voice_from_meeting(C(), meeting, "Speaker_9", "Кто") == -1
 
 
 def test_pipeline_anonymous_without_embedder(tmp_path):

@@ -29,14 +29,29 @@ def _cosine(a: list[float], b: list[float]) -> float:
 class VoicePrint:
     name: str
     embedding: list[float]
+    # Сигнатура эмбеддера, создавшего вектор. Векторы разных моделей несравнимы,
+    # поэтому матчинг учитывает только отпечатки активной модели. Пусто = legacy.
+    model: str = ""
 
 
 class SpeakerRegistry:
-    """Персистентный (JSON) реестр голосовых отпечатков."""
+    """Персистентный (JSON) реестр голосовых отпечатков.
 
-    def __init__(self, path: str = "./.data/voiceprints.json", threshold: float = 0.75) -> None:
+    `model` — сигнатура активного эмбеддера (см. embeddings.embedding_signature).
+    Сопоставление идёт только с отпечатками этой сигнатуры: при смене модели
+    эмбеддингов прежние векторы тихо игнорируются (другая размерность/пространство),
+    их нельзя сравнивать — участники просто перерегистрируются.
+    """
+
+    def __init__(
+        self,
+        path: str = "./.data/voiceprints.json",
+        threshold: float = 0.75,
+        model: str = "",
+    ) -> None:
         self._path = Path(path)
         self._threshold = threshold
+        self._model = model
         self._prints: list[VoicePrint] = []
         self._load()
 
@@ -45,6 +60,10 @@ class SpeakerRegistry:
             data = json.loads(self._path.read_text(encoding="utf-8"))
             self._prints = [VoicePrint(**d) for d in data]
 
+    def _active(self) -> list[VoicePrint]:
+        """Отпечатки, сравнимые с текущим эмбеддером (та же сигнатура модели)."""
+        return [vp for vp in self._prints if vp.model == self._model]
+
     def _save(self) -> None:
         self._path.parent.mkdir(parents=True, exist_ok=True)
         self._path.write_text(
@@ -52,33 +71,74 @@ class SpeakerRegistry:
             encoding="utf-8",
         )
 
+    # Сколько отпечатков храним на одного человека. Несколько образцов (с разных
+    # условий — чистый микрофон, loopback Телемоста) повышают шанс опознать голос,
+    # когда тембр «плывёт» из-за кодека связи. Матчинг берёт ЛУЧШИЙ образец.
+    _MAX_PER_NAME = 6
+
     def __len__(self) -> int:
-        return len(self._prints)
+        """Число опознаваемых людей (уникальных имён в активной модели)."""
+        return len(set(vp.name for vp in self._active()))
 
     def names(self) -> list[str]:
-        return [vp.name for vp in self._prints]
+        """Уникальные имена (активная модель), в порядке первого появления."""
+        seen: list[str] = []
+        for vp in self._active():
+            if vp.name not in seen:
+                seen.append(vp.name)
+        return seen
+
+    def sample_count(self, name: str) -> int:
+        return sum(1 for vp in self._active() if vp.name == name)
 
     @property
     def threshold(self) -> float:
         return self._threshold
 
     def rank(self, embedding: list[float]) -> list[tuple[str, float]]:
-        """Все известные голоса с косинусной близостью, по убыванию."""
-        scored = [(vp.name, _cosine(embedding, vp.embedding)) for vp in self._prints]
-        scored.sort(key=lambda x: x[1], reverse=True)
-        return scored
+        """Известные голоса с косинусной близостью, по убыванию.
 
-    def enroll(self, name: str, embedding: list[float]) -> None:
-        self._prints = [vp for vp in self._prints if vp.name != name]
-        self._prints.append(VoicePrint(name=name, embedding=embedding))
+        Считаем только по отпечаткам активной модели (векторы разных моделей
+        несравнимы). Одно имя — одна запись: берём МАКСИМУМ близости по всем его
+        образцам (любой образец достаточно похож → считаем, что это он).
+        """
+        best: dict[str, float] = {}
+        for vp in self._active():
+            score = _cosine(embedding, vp.embedding)
+            if vp.name not in best or score > best[vp.name]:
+                best[vp.name] = score
+        ranked = sorted(best.items(), key=lambda x: x[1], reverse=True)
+        return ranked
+
+    def enroll(self, name: str, embedding: list[float], *, replace: bool = False) -> int:
+        """Добавить образец голоса. По умолчанию НАКАПЛИВАЕМ образцы на человека.
+
+        Образец помечается сигнатурой активной модели. replace=True — заменить все
+        прежние образцы этого имени (в активной модели) одним. Возвращает число
+        образцов имени после операции. Сверх `_MAX_PER_NAME` отбрасываем старые.
+        """
+        if replace:
+            self._prints = [
+                vp for vp in self._prints if not (vp.name == name and vp.model == self._model)
+            ]
+        self._prints.append(VoicePrint(name=name, embedding=embedding, model=self._model))
+        # Ограничиваем число образцов имени в активной модели: последние _MAX_PER_NAME.
+        same = [
+            vp for vp in self._prints if vp.name == name and vp.model == self._model
+        ][-self._MAX_PER_NAME:]
+        kept: list[VoicePrint] = []
+        for vp in self._prints:
+            if vp.name != name or vp.model != self._model or vp in same:
+                kept.append(vp)
+        self._prints = kept
         self._save()
-        log.info("Голос зарегистрирован: %s", name)
+        count = self.sample_count(name)
+        log.info("Голос зарегистрирован: %s (%s, образцов: %d)", name, self._model or "legacy", count)
+        return count
 
     def identify(self, embedding: list[float]) -> str | None:
         """Вернуть имя ближайшего известного голоса или None."""
-        best_name, best_score = None, 0.0
-        for vp in self._prints:
-            score = _cosine(embedding, vp.embedding)
-            if score >= self._threshold and score > best_score:
-                best_name, best_score = vp.name, score
-        return best_name
+        ranked = self.rank(embedding)
+        if ranked and ranked[0][1] >= self._threshold:
+            return ranked[0][0]
+        return None

@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from .audio.embeddings import build_embedder
+from .audio.embeddings import build_embedder, embedding_signature
 from .audio.speakers import SpeakerRegistry
 from .audio.transcriber import build_transcriber
 from .bot.confirmation import PendingStore
@@ -62,7 +62,13 @@ class AppContainer:
         self.provider = build_provider(s)
         self.board = build_board(s.yougile)
         # Голосовые отпечатки: реестр + (опц.) эмбеддер для авто-имён спикеров.
-        self.speakers = SpeakerRegistry(s.audio.voiceprints_path, s.audio.voiceprint_threshold)
+        # Реестр помечает/сопоставляет отпечатки сигнатурой активной модели —
+        # при смене модели эмбеддингов прежние векторы не путаются с новыми.
+        self.speakers = SpeakerRegistry(
+            s.audio.voiceprints_path,
+            s.audio.voiceprint_threshold,
+            model=embedding_signature(s.audio),
+        )
         self.embedder = build_embedder(s.audio)
         self.transcriber = build_transcriber(
             s.audio,
@@ -72,6 +78,10 @@ class AppContainer:
         )
         # Активные записи встреч (по чату): chat_id -> MeetingRecorder.
         self.active_meetings: dict[int, object] = {}
+        # Последняя обработанная запись на чат: chat_id -> {"path", "segments"}.
+        # Нужна команде /who — дообучить голос спикера из реальных loopback-условий
+        # встречи. Wav удаляется при замене следующей записью и в aclose.
+        self.recent_meetings: dict[int, dict] = {}
 
         self.service = TaskService(
             settings=s,
@@ -128,6 +138,13 @@ class AppContainer:
         for rec in list(self.active_meetings.values()):
             try:
                 rec.stop("manual")  # type: ignore[attr-defined]
+            except Exception:  # noqa: BLE001
+                pass
+        from pathlib import Path
+
+        for meeting in self.recent_meetings.values():
+            try:
+                Path(meeting["path"]).unlink(missing_ok=True)
             except Exception:  # noqa: BLE001
                 pass
         self.persist()
