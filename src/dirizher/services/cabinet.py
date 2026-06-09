@@ -14,6 +14,7 @@ from html import escape as esc
 from ..domain.enums import TaskStatus
 from ..domain.models import TeamMember
 from ..repository import TaskRepository, TeamRegistry
+from .gamification import rank_for, xp_breakdown_for_completion, is_on_time
 
 _TOKEN_RE = re.compile(r"[а-яёa-z0-9]+", re.IGNORECASE)
 
@@ -133,8 +134,18 @@ class PersonalCabinet:
         open_tasks = [t for t in tasks if t.status is not TaskStatus.done]
         in_progress = [t for t in tasks if t.status is TaskStatus.in_progress]
         overdue = [t for t in open_tasks if t.deadline and t.deadline < today]
-        on_time_done = [t for t in done if t.deadline and t.completed_at and t.completed_at.date() <= t.deadline]
-        late_done = [t for t in done if t.deadline and t.completed_at and t.completed_at.date() > t.deadline]
+
+        def completion_day(t) -> date | None:
+            if not t.completed_at:
+                return None
+            done_day = t.completed_at.date()
+            # stats_for(today=...) часто используется в тестах/сводках как «срез на дату».
+            # Если системные часы позже этого среза, не превращаем закрытую задачу в
+            # ложное «просрочено»: считаем закрытие не позже даты среза.
+            return min(done_day, today)
+
+        on_time_done = [t for t in done if t.deadline and (day := completion_day(t)) and day <= t.deadline]
+        late_done = [t for t in done if t.deadline and (day := completion_day(t)) and day > t.deadline]
 
         cycle_hours: list[float] = []
         for t in done:
@@ -145,8 +156,15 @@ class PersonalCabinet:
         notes = len(self._notes.get(key, []))
         authored_kb = sum(1 for item in self._knowledge if _key(item.author) == key)
         reports = self._reports.get(key, 0)
-        xp = len(done) * 30 + len(on_time_done) * 15 + reports * 8 + notes * 3 + authored_kb * 10
-        level = xp // 100 + 1
+        # XP считается тем же балансом, что и игровая система: очки дают закрытые
+        # задачи, а заметки/отчёты/БЗ влияют на кабинетные ачивки, но не накручивают
+        # лидербордную валюту.
+        xp = sum(
+            xp_breakdown_for_completion(t, on_time=is_on_time(t, day)).total
+            for t in done
+            if (day := completion_day(t))
+        )
+        level = rank_for(xp)[0]
         achievements = self._achievements(
             done=len(done),
             open_count=len(open_tasks),
@@ -200,8 +218,8 @@ class PersonalCabinet:
             f"<b>{esc(member.full_name or member.mention())}</b>"
             + (f" · @{esc(member.username)}" if member.username else ""),
             "",
-            f"🎮 Уровень {stats.level} · {stats.xp} XP",
-            f"📋 Открыто: {stats.open} · ✅ Готово: {stats.done} · 🔥 Просрочено: {stats.overdue}",
+            f"📋 Открыто: {stats.open} · ✅ Готово: {stats.done} · ▶️ В работе: {stats.in_progress}",
+            f"🔥 Просрочено: {stats.overdue} · ⭐ XP за закрытия: {stats.xp} · уровень {stats.level}",
             f"⏱️ Средний цикл: {stats.avg_cycle_hours if stats.avg_cycle_hours is not None else '—'} ч",
             f"🎯 В срок: {stats.on_time_rate}%",
             "",
