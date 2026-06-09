@@ -113,3 +113,8 @@ def can_manage_knowledge(actor: TeamMember | None, author_user_id: int | None, k
     if actor and author_user_id is not None and actor.user_id == author_user_id:
         return True
     return bool(actor and knowledge_team_id and knowledge_team_id in actor.leader_team_ids)
+
+
+def can_start_meeting(actor: TeamMember | None) -> bool:
+    """Запускать запись созвона могут только руководители и суперюзеры."""
+    return is_superuser(actor) or bool(actor and (actor.leader_team_ids or actor.is_no_team_manager))

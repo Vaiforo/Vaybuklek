@@ -7,7 +7,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from ..domain.enums import TaskStatus
 from ..domain.models import TeamMember
-from .callback_data import BoardCD, ConfirmCD, ForgetCD, IntroCD, PickCD, TaskCD
+from .callback_data import BoardCD, ConfirmCD, ForgetCD, IntroCD, PickCD, SettingsCD, TaskCD
 
 
 def _button(text: str, callback_data) -> InlineKeyboardButton:
@@ -128,3 +128,16 @@ def board_task_keyboard(
     )
     rows.append(action_row)
     return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
+def settings_keyboard(member: TeamMember) -> InlineKeyboardMarkup:
+    """Клавиатура личных настроек уведомлений."""
+    enabled = bool(member.notify_gamification)
+    kb = InlineKeyboardBuilder()
+    kb.button(
+        text=("✅ Геймификация включена" if enabled else "🔕 Геймификация выключена"),
+        callback_data=SettingsCD(action="gamification_off" if enabled else "gamification_on"),
+    )
+    kb.button(text="✖️ Закрыть", callback_data=SettingsCD(action="close"))
+    kb.adjust(1)
+    return kb.as_markup()

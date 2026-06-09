@@ -28,6 +28,8 @@ from aiogram.types import Message
 
 from ...container import AppContainer
 from ...logging_setup import get_logger
+from ...domain.models import TeamMember
+from ...permissions import can_start_meeting
 from ..flow import present
 from ..states import EnrollVoice
 
@@ -36,6 +38,13 @@ log = get_logger("dirizher.bot.meeting")
 
 # Ссылки Яндекс.Телемоста (и telemost.yandex.* доменов)
 _TELEMOST_RE = re.compile(r"https?://telemost\.yandex\.[a-z]+/\S+", re.IGNORECASE)
+
+
+def _actor(message: Message, c: AppContainer) -> TeamMember | None:
+    user = message.from_user
+    if user is None:
+        return None
+    return c.team.register(TeamMember(user_id=user.id, username=user.username, full_name=user.full_name))
 
 
 def has_telemost_link(text: str) -> bool:
@@ -133,7 +142,7 @@ async def _suggest_learning(c: AppContainer, bot, chat_id: int, segments: list) 
     await bot.send_message(
         chat_id,
         "🎓 Кого-то отметил как "
-        + ", ".join(f"<b>{esc(l)}</b>" for l in labels)
+        + ", ".join(f"<b>{esc(label)}</b>" for label in labels)
         + ". Подпишите голос — запомню его из этой записи (loopback-условия):\n"
         + f"<code>/who {example} Имя</code>",
     )
@@ -188,6 +197,10 @@ async def _process_recording(c: AppContainer, bot, chat_id: int, path: str | Non
 @router.message(F.text.func(lambda t: has_telemost_link(t)))
 async def on_telemost_link(message: Message, c: AppContainer) -> None:
     chat_id = message.chat.id
+    actor = _actor(message, c)
+    if not can_start_meeting(actor):
+        await message.answer("⛔ Созвоны могут начинать только руководители и суперюзеры.")
+        return
     if c.transcriber.name == "mock":
         await message.answer(
             "🔗 Вижу ссылку на встречу, но распознавание выключено "

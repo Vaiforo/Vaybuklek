@@ -15,7 +15,6 @@ from __future__ import annotations
 import os
 
 from ..logging_setup import get_logger
-from .decode import decode_mono16k
 
 log = get_logger("dirizher.audio.pyannote")
 
@@ -122,6 +121,8 @@ def to_pyannote_audio(path: str) -> dict:
     """
     import numpy as np
     import torch
+
+    from .decode import decode_mono16k
 
     samples, sr = decode_mono16k(path)
     wav = torch.from_numpy(np.ascontiguousarray(samples, dtype=np.float32)).reshape(1, -1)

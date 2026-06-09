@@ -57,10 +57,18 @@ class StateStore:
         return members, tasks, teams
 
     def save(self, members: list[TeamMember], tasks: list[Task], teams: list[Team] | None = None) -> None:
+        # Backward-compatible API: older code called save(members, tasks) before
+        # org-structure was stored as a separate top-level `teams` block. Do not
+        # treat omitted `teams` as "clear all teams", otherwise a partial save can
+        # leave users in state while wiping the team list. Passing [] explicitly
+        # still clears teams (used by reset flows).
+        if teams is None:
+            _members, _tasks, existing_teams = self.load_full()
+            teams = existing_teams
         data = {
             "team": [m.model_dump(mode="json") for m in members],
             "tasks": [t.model_dump(mode="json") for t in tasks],
-            "teams": [t.model_dump(mode="json") for t in (teams or [])],
+            "teams": [t.model_dump(mode="json") for t in teams],
         }
         payload = json.dumps(data, ensure_ascii=False, indent=2)
         # атомарно: пишем во временный файл и заменяем — не оставляем «битый» файл
