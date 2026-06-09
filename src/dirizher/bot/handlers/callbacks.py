@@ -222,6 +222,7 @@ async def on_forget(cb: CallbackQuery, callback_data: ForgetCD, c: AppContainer)
 _BOARD_STATUS = {
     "todo": TaskStatus.todo,
     "in_progress": TaskStatus.in_progress,
+    "overdue": TaskStatus.overdue,
     "done": TaskStatus.done,
 }
 
