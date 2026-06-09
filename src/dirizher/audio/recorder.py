@@ -138,6 +138,10 @@ class MeetingRecorder:
             reason = f"error: {e}"
             chunks = []
 
+        # Сигнал «запись завершена» для тех, кто ждёт того же stop-флага (напр.
+        # браузерная сессия Телемоста закрывает вкладку). При авто-стопе цикл
+        # выходит по break без set() — выставляем здесь, иначе браузер повиснет.
+        self._stop.set()
         path = self._write(chunks) if chunks else None
         # вернуть результат в event loop бота
         fut = asyncio.run_coroutine_threadsafe(self._on_finish(path, reason), self._loop)
@@ -156,3 +160,37 @@ class MeetingRecorder:
         sf.write(str(out), audio, self._cfg.meeting_samplerate)
         log.info("💾 Запись встречи сохранена: %s (%.1f c)", out, len(audio) / self._cfg.meeting_samplerate)
         return str(out)
+
+
+class TelemostRecorder(MeetingRecorder):
+    """Бот сам входит в звонок Телемоста (браузер) и пишет его звук loopback'ом.
+
+    Отличие от `MeetingRecorder`: перед стартом записи поднимает браузерную
+    сессию `TelemostSession` и подключается к звонку. Звук самого звонка играет
+    в колонки, поэтому пишется тем же loopback-циклом базового класса. На стоп
+    закрываем и запись, и браузер (общий stop-флаг).
+    """
+
+    def __init__(self, link: str, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self._link = link
+        self._session = None
+
+    def start(self) -> bool:
+        if self.is_active:
+            return True
+        from .telemost import TelemostSession, playwright_available
+
+        if not playwright_available():
+            log.warning("playwright не установлен — режим telemost недоступен")
+            return False
+        # Браузер и loopback-запись делят один stop-флаг: стоп гасит оба.
+        self._session = TelemostSession(self._link, self._cfg, self._stop)
+        if not self._session.join():
+            log.warning("Telemost: не удалось войти в звонок (%s)", self._session.error or "нет подтверждения")
+            self._stop.set()  # закрыть браузер, если он успел подняться
+            return False
+        return super().start()
+
+    def stop(self, reason: str = "manual") -> None:
+        super().stop(reason)  # ставит _stop → запись завершится, браузер закроется

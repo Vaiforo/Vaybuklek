@@ -21,6 +21,33 @@ from . import text as tx
 from .notifications import send_with_fallback
 
 
+async def deliver_xp(
+    bot: Bot,
+    c: AppContainer,
+    lines: list[str],
+    *,
+    assignee: str | None = None,
+    dm_chat_id: int | None = None,
+    chat_id: int,
+) -> None:
+    """Доставить строки начисления XP/ачивок.
+
+    По умолчанию (game_announce_in_chat=False) — только в личку исполнителю,
+    чтобы не спамить общий чат; если лички нет — молчим. С флагом — в общий чат.
+    """
+    if not lines:
+        return
+    text = "\n".join(lines)
+    if c.settings.schedule.game_announce_in_chat:
+        await bot.send_message(chat_id, text)
+        return
+    if dm_chat_id is None and assignee is not None:
+        member = c.team.resolve(assignee)
+        dm_chat_id = member.dm_chat_id if member else None
+    if dm_chat_id:
+        await send_with_fallback(bot, dm_chat_id, text)  # без fallback в чат → тихо
+
+
 async def notify_workload(bot: Bot, c: AppContainer, assignee: str | None, chat_id: int) -> None:
     """Предупредить о перегрузке: лично, если пользователь открыл диалог, иначе в чат."""
     warning = c.service.workload_warning(assignee)

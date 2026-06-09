@@ -16,7 +16,7 @@ from ...logging_setup import get_logger
 from .. import keyboards as kb
 from .. import text as tx
 from ..callback_data import BoardCD, ConfirmCD, ForgetCD, PickCD, TaskCD
-from ..flow import finalize, notify_workload
+from ..flow import deliver_xp, finalize, notify_workload
 from ..states import EditTask
 
 router = Router(name="callbacks")
@@ -41,14 +41,14 @@ async def _finish(cb: CallbackQuery, text: str) -> None:
 
 
 async def _celebrate(c: AppContainer, message, task) -> None:
-    """Начислить XP за закрытие и прислать короткое поздравление (если есть)."""
+    """Начислить XP за закрытие; поздравление — в личку исполнителю (без спама в чат)."""
     try:
         lines = c.game.complete(task)
     except Exception as e:  # noqa: BLE001
         log.warning("Геймификация: не удалось начислить XP: %s", e)
         return
     if lines and isinstance(message, Message):
-        await message.answer("\n".join(lines))
+        await deliver_xp(message.bot, c, lines, assignee=task.assignee, chat_id=message.chat.id)
 
 
 async def _after_created(cb: CallbackQuery, c: AppContainer, created) -> None:
@@ -219,10 +219,10 @@ async def on_forget(cb: CallbackQuery, callback_data: ForgetCD, c: AppContainer)
 
 
 # ── Управление карточкой доски («мои задачи») ────────────────────────────────
+# «overdue» нет: это вычисляемый статус, кнопкой его не выставляют.
 _BOARD_STATUS = {
     "todo": TaskStatus.todo,
     "in_progress": TaskStatus.in_progress,
-    "overdue": TaskStatus.overdue,
     "done": TaskStatus.done,
 }
 

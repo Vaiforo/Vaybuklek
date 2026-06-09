@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta, timezone
 from html import escape as _esc
+from zoneinfo import ZoneInfo
 
 from ..bot import text as tx
 from ..bot.notifications import send_with_fallback
@@ -16,6 +17,19 @@ from ..domain.models import Task
 from ..logging_setup import get_logger
 
 log = get_logger("dirizher.jobs")
+
+
+def _in_quiet_hours(c: AppContainer) -> bool:
+    """True, если сейчас тихие часы (по timezone) — авто-напоминания не шлём."""
+    sch = c.settings.schedule
+    if sch.quiet_start == sch.quiet_end:
+        return False
+    try:
+        now_h = datetime.now(ZoneInfo(c.settings.timezone)).hour
+    except Exception:  # noqa: BLE001 — кривая timezone не должна ронять job
+        now_h = datetime.now().hour
+    s, e = sch.quiet_start, sch.quiet_end
+    return s <= now_h < e if s < e else (now_h >= s or now_h < e)
 
 
 def _target_chat(c: AppContainer, task: Task) -> int | None:
@@ -104,11 +118,17 @@ async def run_trash_purge(c: AppContainer) -> int:
     return removed
 
 
-async def run_reminders(c: AppContainer, *, today: date | None = None) -> int:
+async def run_reminders(
+    c: AppContainer, *, today: date | None = None, respect_quiet: bool = True
+) -> int:
     """Напомнить об открытых задачах, дедлайн которых близко/просрочен.
 
-    Возвращает число отправленных напоминаний.
+    Возвращает число отправленных напоминаний. Авто-вызов (планировщик/n8n)
+    уважает тихие часы; ручной /remind передаёт respect_quiet=False.
     """
+    if respect_quiet and _in_quiet_hours(c):
+        log.info("Напоминания пропущены: тихие часы")
+        return 0
     await run_trash_purge(c)
     today = today or date.today()
     horizon_day = today + timedelta(days=max(1, c.settings.schedule.remind_before_hours // 24))
