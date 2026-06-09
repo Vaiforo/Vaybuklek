@@ -32,6 +32,25 @@ def test_stop_reason_silence_and_timeout():
     assert _stop_reason(9999, 100, silence_limit=0, max_s=10800) is None
 
 
+# ── Переключатель устройства CPU/GPU ─────────────────────────────────────────
+def test_resolve_device_respects_preference(monkeypatch):
+    from dirizher.audio import pyannote_compat as pc
+
+    # CUDA доступна: cuda/auto → cuda, cpu → форс CPU
+    monkeypatch.setattr(pc, "_cuda_available", lambda: True)
+    assert pc.resolve_device("cuda") == "cuda"
+    assert pc.resolve_device("auto") == "cuda"
+    assert pc.resolve_device("") == "cuda"
+    assert pc.resolve_device("CPU") == "cpu"  # регистр и форс CPU
+    assert pc.cuda_device("cpu") is None      # на CPU устройство не отдаём
+
+    # CUDA недоступна: cuda → безопасный откат на CPU
+    monkeypatch.setattr(pc, "_cuda_available", lambda: False)
+    assert pc.resolve_device("cuda") == "cpu"
+    assert pc.resolve_device("auto") == "cpu"
+    assert pc.cuda_device("auto") is None
+
+
 # ── Голосовые отпечатки: enroll/identify ─────────────────────────────────────
 def test_voiceprint_enroll_and_identify(tmp_path):
     reg = SpeakerRegistry(str(tmp_path / "vp.json"), threshold=0.9)

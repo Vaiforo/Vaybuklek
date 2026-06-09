@@ -47,7 +47,7 @@ class PyannoteEmbedder:
             model = load_pretrained(
                 Model.from_pretrained, self._cfg.embedding_model, self._cfg.hf_token
             )
-            dev = cuda_device()
+            dev = cuda_device(self._cfg.device)
             self._inference = Inference(model, window="whole", device=dev)
             if dev is not None:
                 log.info("Эмбеддер pyannote → GPU (cuda)")

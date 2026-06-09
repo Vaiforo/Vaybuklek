@@ -82,19 +82,15 @@ class WhisperPipeline:
     def _pick_device(self) -> tuple[str, str]:
         """Устройство и compute_type для faster-whisper.
 
-        По умолчанию авто: CUDA → int8_float16 (оптимально и для карт без
-        tensor-ядер, напр. GTX 16xx, и для RTX — быстрее float16 при той же
-        точности), CPU → int8. Любое можно переопределить из конфигурации
-        (DIRIZHER_AUDIO__WHISPER_DEVICE / __WHISPER_COMPUTE_TYPE).
+        Устройство берём из мастер-настройки `device` (auto|cuda|cpu) через единый
+        резолвер; `whisper_device` — тонкий оверрайд только для Whisper. На CUDA
+        compute по умолчанию int8_float16 (оптимум и для карт без tensor-ядер, напр.
+        GTX 16xx, и для RTX), на CPU — int8. Всё переопределяется конфигурацией.
         """
-        device = self._cfg.whisper_device.strip().lower()
-        if not device:
-            try:
-                import torch
+        from .pyannote_compat import resolve_device
 
-                device = "cuda" if torch.cuda.is_available() else "cpu"
-            except Exception:  # noqa: BLE001
-                device = "cpu"
+        pref = self._cfg.whisper_device.strip() or self._cfg.device
+        device = resolve_device(pref)
         compute = self._cfg.whisper_compute_type.strip().lower()
         if not compute:
             compute = "int8_float16" if device == "cuda" else "int8"
@@ -113,7 +109,7 @@ class WhisperPipeline:
                     "pyannote/speaker-diarization-3.1",
                     self._cfg.hf_token,
                 )
-                move_to_cuda(self._diarizer, "диаризатор pyannote")
+                move_to_cuda(self._diarizer, "диаризатор pyannote", self._cfg.device)
             except Exception as e:  # noqa: BLE001
                 log.warning("Диаризация недоступна (%s) — продолжаю без неё", e)
                 self._diarizer = None

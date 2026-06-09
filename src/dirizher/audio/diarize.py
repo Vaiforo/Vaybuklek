@@ -154,7 +154,7 @@ _PYANNOTE_PIPELINE = None
 _PYANNOTE_KEY: str | None = None
 
 
-def _get_pyannote(hf_token: str, model: str = "pyannote/speaker-diarization-3.1"):
+def _get_pyannote(hf_token: str, model: str = "pyannote/speaker-diarization-3.1", device: str = "auto"):
     """Лениво загрузить и закэшировать pyannote-пайплайн (загрузка медленная)."""
     global _PYANNOTE_PIPELINE, _PYANNOTE_KEY
     if _PYANNOTE_PIPELINE is not None and _PYANNOTE_KEY == hf_token:
@@ -165,7 +165,7 @@ def _get_pyannote(hf_token: str, model: str = "pyannote/speaker-diarization-3.1"
 
     log.info("Загружаю pyannote 3.1 (диаризация встречи)…")
     _PYANNOTE_PIPELINE = load_pretrained(Pipeline.from_pretrained, model, hf_token)
-    move_to_cuda(_PYANNOTE_PIPELINE, "диаризатор pyannote")
+    move_to_cuda(_PYANNOTE_PIPELINE, "диаризатор pyannote", device)
     _PYANNOTE_KEY = hf_token
     return _PYANNOTE_PIPELINE
 
@@ -188,6 +188,7 @@ def assign_speakers_pyannote(
     registry=None,
     name_threshold: float | None = None,
     merge_threshold: float = _MERGE_THRESHOLD,
+    device: str = "auto",
 ) -> bool:
     """Диаризация pyannote: кто-когда нейросетью, затем имена по реестру голосов.
 
@@ -204,7 +205,7 @@ def assign_speakers_pyannote(
     try:
         from .pyannote_compat import diarization_turns, to_pyannote_audio
 
-        turns = diarization_turns(_get_pyannote(hf_token)(to_pyannote_audio(wav_path)))
+        turns = diarization_turns(_get_pyannote(hf_token, device=device)(to_pyannote_audio(wav_path)))
     except Exception as e:  # noqa: BLE001
         log.warning("pyannote-диаризация недоступна (%s) — откат на MFCC", e)
         return False

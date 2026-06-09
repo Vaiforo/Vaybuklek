@@ -59,6 +59,7 @@ def _diarize_segments(c: AppContainer, path: str, segments: list) -> None:
         registry=c.speakers,
         name_threshold=audio.voiceprint_name_threshold,
         merge_threshold=audio.speaker_merge_similarity,
+        device=audio.device,
     ):
         return
     assign_speakers_by_voice(

@@ -115,11 +115,15 @@ class AudioSettings(BaseSettings):
     # Модель локального faster-whisper. large-v3 — максимум точности (русский),
     # требует GPU/много RAM. Для слабого железа: small/medium/large-v3-turbo.
     whisper_model: str = "large-v3"
+    # Мастер-переключатель устройства для ВСЕГО аудио-стека (Whisper + pyannote
+    # диаризатор/эмбеддер): auto (CUDA если доступна, иначе CPU) | cuda | cpu.
+    # При cuda без доступного GPU — безопасный откат на CPU с предупреждением.
+    device: str = "auto"
     # compute_type для faster-whisper. Пусто → авто: на CUDA int8_float16
     # (оптимально для карт без tensor-ядер, напр. GTX 16xx), на CPU int8.
     # Варианты: float16, int8_float16, int8, float32.
     whisper_compute_type: str = ""
-    # Устройство: пусто → авто (CUDA если есть, иначе CPU). cuda | cpu.
+    # Тонкий оверрайд устройства ТОЛЬКО для Whisper. Пусто → берётся `device`.
     whisper_device: str = ""
     whisper_beam_size: int = 5  # ширина beam search (выше → точнее, но медленнее)
     # Доп. термины/жаргон проекта для initial_prompt Whisper (имена команды
