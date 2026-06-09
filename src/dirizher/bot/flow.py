@@ -41,9 +41,11 @@ async def deliver_xp(
     if c.settings.schedule.game_announce_in_chat:
         await bot.send_message(chat_id, text)
         return
-    if dm_chat_id is None and assignee is not None:
-        member = c.team.resolve(assignee)
-        dm_chat_id = member.dm_chat_id if member else None
+    member = c.team.resolve(assignee) if assignee is not None else None
+    if member is None or not member.notify_gamification:
+        return
+    if dm_chat_id is None:
+        dm_chat_id = member.dm_chat_id
     if dm_chat_id:
         await send_with_fallback(bot, dm_chat_id, text)  # без fallback в чат → тихо
 

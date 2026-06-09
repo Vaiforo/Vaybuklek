@@ -42,3 +42,8 @@ class PickCD(CallbackData, prefix="pick"):
     action: str
     pid: str
     idx: str = "-"
+
+
+class SettingsCD(CallbackData, prefix="set"):
+    # gamification_on | gamification_off | close — личные настройки уведомлений
+    action: str

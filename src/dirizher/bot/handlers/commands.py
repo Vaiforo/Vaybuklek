@@ -34,6 +34,8 @@ HELP = f"""\
 Просто пишите задачи в чат — я сам разберу их на карточки.
 А этими командами можно управлять вручную.
 
+• /settings — настройки уведомлений
+
 📋 <b>Задачи и доска</b>
 • /board — канбан-доска целиком
 • /tasks <code>[@кто]</code> — открытые задачи (свои или коллеги)
@@ -110,8 +112,11 @@ HELP_ADMIN = f"""\
 • /team_create <code>Название</code> — создать команду
 • /team_add_member <code>TEAM @кто</code> — добавить участника
 • /team_add_manager <code>TEAM @кто</code> — назначить руководителя
+• /team_del_manager <code>TEAM @кто</code> — снять руководителя команды
+• /team_del_member <code>TEAM @кто</code> — удалить участника из команды
 • /no_team_manager <code>@кто</code> — руководитель без команды
-• /teams — список команд
+• /del_manager <code>@кто</code> — снять руководителя без команды
+• /teams — список команд с руководителями и участниками
 
 <b>Опасная зона</b>
 • /board_clear — очистить доску
@@ -294,6 +299,24 @@ async def cmd_help(message: Message, c: AppContainer) -> None:
     await message.answer(_visible_help(c) + suffix, reply_markup=kb.introduce_keyboard())
 
 
+def _render_settings(member: TeamMember) -> str:
+    state = "✅ включены" if member.notify_gamification else "🔕 выключены"
+    return (
+        "⚙️ <b>Настройки уведомлений</b>\n"
+        f"{DIVIDER}\n"
+        "🎮 Уведомления о геймификации: <b>" + state + "</b>\n"
+        "Сюда входят начисление XP, повышение уровня и новые ачивки. "
+        "По умолчанию они выключены, чтобы не спамить личку."
+    )
+
+
+@router.message(Command("settings"))
+async def cmd_settings(message: Message, c: AppContainer) -> None:
+    member = _member_from_message(message, c)
+    c.persist()
+    await message.answer(_render_settings(member), reply_markup=kb.settings_keyboard(member))
+
+
 @router.message(Command("help_meetings"))
 async def cmd_help_meetings(message: Message, c: AppContainer) -> None:
     _member_from_message(message, c)
@@ -361,6 +384,20 @@ async def cmd_no_team_manager(message: Message, command: CommandObject, c: AppCo
     )
 
 
+@router.message(Command("del_manager"))
+async def cmd_del_manager(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    target = _resolve_mentioned_member(c, message, (command.args or "").strip())
+    if target is None:
+        await message.answer("Формат: <code>/del_manager @username</code> или ответьте командой на сообщение участника.")
+        return
+    c.team.revoke_no_team_manager(target)
+    c.persist()
+    await message.answer(f"🧭 Руководитель без команды снят: {target.mention()}.")
+
+
 @router.message(Command("team_create"))
 async def cmd_team_create(message: Message, command: CommandObject, c: AppContainer) -> None:
     actor = _actor(message, c)
@@ -407,6 +444,43 @@ async def cmd_team_add_manager(message: Message, command: CommandObject, c: AppC
     await message.answer(f"🧭 Руководитель команды <b>{esc(team.name)}</b>: {target.mention()}.")
 
 
+@router.message(Command("team_del_manager"))
+async def cmd_team_del_manager(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    raw_team, _, raw_user = (command.args or "").strip().partition(" ")
+    team = c.team.get_team(raw_team)
+    target = _resolve_mentioned_member(c, message, raw_user)
+    if team is None or target is None:
+        await message.answer("Формат: <code>/team_del_manager TEAM @username</code>")
+        return
+    c.team.remove_member_from_team(target, team, leader=True)
+    c.persist()
+    await message.answer(f"🧭 Руководитель команды <b>{esc(team.name)}</b> снят: {target.mention()}.")
+
+
+@router.message(Command("team_del_member"))
+async def cmd_team_del_member(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    raw_team, _, raw_user = (command.args or "").strip().partition(" ")
+    team = c.team.get_team(raw_team)
+    target = _resolve_mentioned_member(c, message, raw_user)
+    if team is None or target is None:
+        await message.answer("Формат: <code>/team_del_member TEAM @username</code>")
+        return
+    c.team.remove_member_from_team(target, team, leader=False)
+    c.persist()
+    await message.answer(f"👤 Участник удалён из <b>{esc(team.name)}</b>: {target.mention()}.")
+
+
+def _mentions(members: list[TeamMember | None]) -> str:
+    people = [m.mention() for m in members if m is not None]
+    return ", ".join(people) if people else "—"
+
+
 @router.message(Command("teams"))
 async def cmd_teams(message: Message, c: AppContainer) -> None:
     teams = c.team.teams()
@@ -414,22 +488,24 @@ async def cmd_teams(message: Message, c: AppContainer) -> None:
     if not teams and not no_team_managers:
         await message.answer("Команды ещё не созданы. Суперюзер может создать: <code>/team_create Название</code>")
         return
-    lines = ["👥 <b>Команды</b>"]
+    lines = ["👥 <b>Команды</b>", DIVIDER]
     if no_team_managers:
-        lines.append(
-            "• <b>Нет команды</b> · рук.: "
-            + ", ".join(m.mention() for m in no_team_managers)
-            + " · команда: —"
-        )
+        lines.extend([
+            "🧭 <b>Команда —</b>",
+            "   👑 Руководители: " + _mentions(no_team_managers),
+            "   👤 Участники: —",
+            "",
+        ])
     for t in teams:
         managers = [c.team.get_by_user_id(uid) for uid in t.manager_user_ids]
         members = [c.team.get_by_user_id(uid) for uid in t.member_user_ids]
-        lines.append(
-            f"• <code>{esc(t.id)}</code> · <b>{esc(t.name)}</b> · "
-            f"рук.: {', '.join(m.mention() for m in managers if m) or '—'} · "
-            f"уч.: {len([m for m in members if m])}"
-        )
-    await message.answer("\n".join(lines))
+        lines.extend([
+            f"🏷️ <b>{esc(t.name)}</b> · <code>{esc(t.id)}</code>",
+            "   👑 Руководители: " + _mentions(managers),
+            "   👤 Участники: " + _mentions(members),
+            "",
+        ])
+    await message.answer("\n".join(lines).rstrip())
 
 
 @router.message(Command("board_clear", "clear_board"))
@@ -613,7 +689,6 @@ async def send_my_tasks(message: Message, c: AppContainer, *, query_text: str = 
         )
 
 
-
 @router.message(Command("digest", "current_digest", "занятость"))
 async def cmd_current_digest(message: Message, c: AppContainer) -> None:
     actor = _actor(message, c)
@@ -645,7 +720,6 @@ async def cmd_task_restore(message: Message, command: CommandObject, c: AppConta
     await message.answer(f"♻️ Восстановил задачу: «{esc(task.title)}».")
 
 
-
 @router.message(Command("unassigned_tasks", "unassigned", "no_assignee", "без_исполнителя"))
 async def cmd_unassigned_tasks(message: Message, c: AppContainer) -> None:
     actor = _actor(message, c)
@@ -657,8 +731,6 @@ async def cmd_unassigned_tasks(message: Message, c: AppContainer) -> None:
 @router.message(Command("tasks"))
 async def cmd_tasks(message: Message, command: CommandObject, c: AppContainer) -> None:
     await send_my_tasks(message, c, query_text=(command.args or "").strip())
-
-
 
 
 @router.message(Command("task_edit", "edit_task"))
@@ -1042,7 +1114,14 @@ async def cmd_report(message: Message, command: CommandObject, c: AppContainer) 
         xp = [n for n in notes if n.startswith("🎮")]
         await message.answer("🌙 <b>Отчёт принят, доска обновлена</b>\n" + "\n".join(esc(n) for n in status))
         from ..flow import deliver_xp
-        await deliver_xp(message.bot, c, xp, dm_chat_id=member.dm_chat_id if member else None, chat_id=message.chat.id)
+        await deliver_xp(
+            message.bot,
+            c,
+            xp,
+            assignee=key,
+            dm_chat_id=member.dm_chat_id if member else None,
+            chat_id=message.chat.id,
+        )
     else:
         await message.answer("🌙 <b>Отчёт принят</b>\nПодходящих открытых задач для авто-статуса не нашёл.")
 

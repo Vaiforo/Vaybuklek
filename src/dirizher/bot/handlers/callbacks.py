@@ -15,7 +15,7 @@ from ...permissions import can_change_task_status, can_create_task, can_delete_t
 from ...logging_setup import get_logger
 from .. import keyboards as kb
 from .. import text as tx
-from ..callback_data import BoardCD, ConfirmCD, ForgetCD, PickCD, TaskCD
+from ..callback_data import BoardCD, ConfirmCD, ForgetCD, PickCD, SettingsCD, TaskCD
 from ..flow import deliver_xp, finalize, notify_workload
 from ..states import EditTask
 
@@ -54,6 +54,43 @@ async def _celebrate(c: AppContainer, message, task) -> None:
 async def _after_created(cb: CallbackQuery, c: AppContainer, created) -> None:
     if isinstance(cb.message, Message):
         await notify_workload(cb.bot, c, created.assignee, cb.message.chat.id)
+
+
+def _render_settings(member: TeamMember) -> str:
+    state = "✅ включены" if member.notify_gamification else "🔕 выключены"
+    return (
+        "⚙️ <b>Настройки уведомлений</b>\n"
+        f"{tx.DIVIDER}\n"
+        "🎮 Уведомления о геймификации: <b>" + state + "</b>\n"
+        "Сюда входят начисление XP, повышение уровня и новые ачивки. "
+        "По умолчанию они выключены, чтобы не спамить личку."
+    )
+
+
+@router.callback_query(SettingsCD.filter())
+async def on_settings(cb: CallbackQuery, callback_data: SettingsCD, c: AppContainer) -> None:
+    member = _actor(cb, c)
+    if member is None:
+        await cb.answer()
+        return
+    if callback_data.action == "close":
+        if isinstance(cb.message, Message):
+            await cb.message.edit_reply_markup(reply_markup=None)
+        await cb.answer("Закрыто")
+        return
+    if callback_data.action == "gamification_on":
+        member.notify_gamification = True
+        c.persist()
+        await cb.answer("Уведомления включены")
+    elif callback_data.action == "gamification_off":
+        member.notify_gamification = False
+        c.persist()
+        await cb.answer("Уведомления выключены")
+    else:
+        await cb.answer()
+        return
+    if isinstance(cb.message, Message):
+        await cb.message.edit_text(_render_settings(member), reply_markup=kb.settings_keyboard(member))
 
 
 @router.callback_query(ConfirmCD.filter())

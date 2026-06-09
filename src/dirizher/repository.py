@@ -113,6 +113,8 @@ class TeamRegistry:
                 existing.dm_chat_id = member.dm_chat_id or existing.dm_chat_id
                 existing.is_superuser = member.is_superuser or existing.is_superuser
                 existing.is_no_team_manager = member.is_no_team_manager or existing.is_no_team_manager
+                if "notify_gamification" in member.model_fields_set:
+                    existing.notify_gamification = member.notify_gamification
                 for tid in member.leader_team_ids:
                     if tid not in existing.leader_team_ids:
                         existing.leader_team_ids.append(tid)
@@ -172,6 +174,12 @@ class TeamRegistry:
         saved.is_no_team_manager = True
         return saved
 
+    def revoke_no_team_manager(self, member: TeamMember) -> TeamMember:
+        """Снять руководителя слоя «нет команды»."""
+        saved = self.register(member)
+        saved.is_no_team_manager = False
+        return saved
+
     def add_team(self, team: Team) -> Team:
         self._teams[team.id] = team
         return team
@@ -205,6 +213,26 @@ class TeamRegistry:
                 saved.leader_team_ids.append(team.id)
         return saved
 
+    def remove_member_from_team(self, member: TeamMember, team: Team, *, leader: bool = False) -> TeamMember:
+        """Убрать участника или руководителя из команды.
+
+        `leader=True` снимает только роль руководителя; участником команды человек
+        остаётся. `leader=False` убирает человека из команды целиком, включая роль
+        руководителя этой команды.
+        """
+        saved = self.register(member)
+        if saved.user_id is None:
+            return saved
+        if leader:
+            team.manager_user_ids = [uid for uid in team.manager_user_ids if uid != saved.user_id]
+            saved.leader_team_ids = [tid for tid in saved.leader_team_ids if tid != team.id]
+            return saved
+        team.member_user_ids = [uid for uid in team.member_user_ids if uid != saved.user_id]
+        team.manager_user_ids = [uid for uid in team.manager_user_ids if uid != saved.user_id]
+        saved.member_team_ids = [tid for tid in saved.member_team_ids if tid != team.id]
+        saved.leader_team_ids = [tid for tid in saved.leader_team_ids if tid != team.id]
+        return saved
+
     def all(self) -> list[TeamMember]:
         return list(self._by_id.values()) + self._anon
 
@@ -220,7 +248,48 @@ class TeamRegistry:
         return member
 
     def set_teams(self, teams: list[Team]) -> None:
+        """Restore teams and repair legacy/partial state.
+
+        Old state files could contain users with `member_team_ids` /
+        `leader_team_ids` but no top-level `teams` block. Also, copied state can
+        occasionally be one-sided: teams know users, while users do not know
+        teams, or vice versa. Keep both representations synchronized so `/teams`
+        and permission checks survive restarts and migrations.
+        """
         self._teams = {t.id: t for t in teams}
+
+        # Recreate missing Team objects from member-side references. The original
+        # name is unavailable in legacy files, but preserving the id is enough for
+        # ACLs and admin commands; the next persist writes the repaired block.
+        for member in self._by_id.values():
+            for tid in [*member.member_team_ids, *member.leader_team_ids]:
+                if tid and tid not in self._teams:
+                    self._teams[tid] = Team(id=tid, name=f"Команда {tid[:8]}")
+
+        for team in self._teams.values():
+            member_ids = set(team.member_user_ids)
+            manager_ids = set(team.manager_user_ids)
+            member_ids.update(manager_ids)
+
+            # Team -> member side. Managers are also members of their team.
+            for uid in member_ids:
+                member = self._by_id.get(uid)
+                if member is None:
+                    continue
+                if team.id not in member.member_team_ids:
+                    member.member_team_ids.append(team.id)
+                if uid in manager_ids and team.id not in member.leader_team_ids:
+                    member.leader_team_ids.append(team.id)
+
+            # Member -> team side.
+            for member in self._by_id.values():
+                if team.id in member.member_team_ids and member.user_id not in team.member_user_ids:
+                    team.member_user_ids.append(member.user_id)
+                if team.id in member.leader_team_ids:
+                    if member.user_id not in team.manager_user_ids:
+                        team.manager_user_ids.append(member.user_id)
+                    if member.user_id not in team.member_user_ids:
+                        team.member_user_ids.append(member.user_id)
 
     @staticmethod
     def _candidates(m: TeamMember) -> list[str]:
