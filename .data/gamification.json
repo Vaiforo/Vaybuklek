@@ -1,0 +1,135 @@
+{
+  "players": {
+    "stefan_richards": {
+      "key": "stefan_richards",
+      "display_name": "Энди",
+      "xp": 120,
+      "tasks_done": 4,
+      "on_time": 4,
+      "high_done": 2,
+      "streak_days": 1,
+      "last_done_date": "2026-06-08",
+      "achievements": [
+        "first_blood",
+        "firefighter"
+      ],
+      "done_task_ids": [
+        "871e36113386",
+        "5c95a7a4ee26",
+        "e7bf3ed091ef",
+        "101126610a0e"
+      ]
+    },
+    "vaiforic": {
+      "key": "vaiforic",
+      "display_name": "vaiforic",
+      "xp": 260,
+      "tasks_done": 10,
+      "on_time": 9,
+      "high_done": 2,
+      "streak_days": 2,
+      "last_done_date": "2026-06-09",
+      "achievements": [
+        "first_blood",
+        "firefighter",
+        "five",
+        "sniper",
+        "ten"
+      ],
+      "done_task_ids": [
+        "7571382fc532",
+        "0ca936022b90",
+        "9af79f3c2e09",
+        "4e5a1afa03ef",
+        "421564e6d898",
+        "c5e692eb7a8c",
+        "c569f66d7948",
+        "f4e10c9c56ae",
+        "18d6beb1927f",
+        "89db1cf059e5"
+      ]
+    },
+    "danya_skiba": {
+      "key": "danya_skiba",
+      "display_name": "Даня",
+      "xp": 25,
+      "tasks_done": 1,
+      "on_time": 1,
+      "high_done": 0,
+      "streak_days": 1,
+      "last_done_date": "2026-06-08",
+      "achievements": [
+        "first_blood"
+      ],
+      "done_task_ids": [
+        "c7fadb5f405b"
+      ]
+    },
+    "maxim": {
+      "key": "maxim",
+      "display_name": "Максим",
+      "xp": 450,
+      "tasks_done": 18,
+      "on_time": 18,
+      "high_done": 0,
+      "streak_days": 1,
+      "last_done_date": "2026-06-07",
+      "achievements": [
+        "first_blood",
+        "five",
+        "sniper",
+        "ten"
+      ],
+      "done_task_ids": [
+        "a4aa4fdb794c",
+        "d7679d5696d0",
+        "a49f8e51e272",
+        "aea838975727",
+        "2a96d3adfed6",
+        "346488a92af4",
+        "45826648107f",
+        "c8c07e3a7c84",
+        "a16b91b854b4",
+        "da7eefe9e2be",
+        "bddcbe8db52f",
+        "fb89139a55d8",
+        "35203c94840a",
+        "1916773726ef",
+        "57f6cc6ec9de",
+        "b84b028245af",
+        "ec692cc28dfe",
+        "7d20a6070270"
+      ]
+    },
+    "danya": {
+      "key": "danya",
+      "display_name": "Данила",
+      "xp": 300,
+      "tasks_done": 12,
+      "on_time": 12,
+      "high_done": 0,
+      "streak_days": 1,
+      "last_done_date": "2026-06-08",
+      "achievements": [
+        "first_blood",
+        "five",
+        "sniper",
+        "ten"
+      ],
+      "done_task_ids": [
+        "c00c062a450a",
+        "6cf9d4fbbdd5",
+        "36b9017352e7",
+        "1681a78b9a5a",
+        "404075319510",
+        "a49d6a47cd7a",
+        "89ad67463bee",
+        "a802bf5c7f66",
+        "efd12ccb6765",
+        "af2610ac877a",
+        "0be3d5439b63",
+        "49d1edb2031d"
+      ]
+    }
+  }
+}

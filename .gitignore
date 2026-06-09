@@ -4,7 +4,6 @@
 !.env.example
 
 # Данные среды выполнения
-.data/
 logs/
 *.sqlite3
 *.db

@@ -1,0 +1,1393 @@
+23:23:17 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+23:23:19 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+23:23:19 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 3
+23:23:20 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 3
+23:23:20 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+23:23:20 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: pyannote (pyannote/embedding)
+23:23:20 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+23:23:20 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 38
+23:23:20 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+23:23:20 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+23:23:20 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+23:23:20 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+23:23:20 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+23:23:20 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+23:23:20 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+23:23:20 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+23:23:20 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+23:23:20 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+23:23:20 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+23:23:22 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+23:23:22 │ INFO    │ aiogram.dispatcher     │ Start polling
+23:23:22 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+23:24:33 │ INFO    │ dirizher.audio.recorder │ 🔴 Запись встречи начата (устройство: Динамики (Razer Barracuda X))
+23:26:15 │ INFO    │ dirizher.audio.recorder │ 💾 Запись встречи сохранена: C:\Users\Stefa\AppData\Local\Temp\dirizher_meeting_20ebe66fcb0.wav (102.0 c)
+23:26:19 │ INFO    │ dirizher.audio.pipeline │ Загружаю Whisper-модель large-v3-turbo (cpu/int8)…
+23:26:24 │ INFO    │ faster_whisper         │ Processing audio with duration 01:42.000
+23:26:24 │ INFO    │ faster_whisper         │ VAD filter removed 00:12.944 of audio
+23:26:59 │ INFO    │ dirizher.audio.pipeline │ Загружаю pyannote 3.1 (диаризация)…
+23:27:57 │ INFO    │ dirizher.audio.embeddings │ Загружаю модель эмбеддингов pyannote/embedding…
+23:27:58 │ INFO    │ lightning.pytorch.utilities.migration.utils │ Lightning automatically upgraded your loaded checkpoint from v1.2.7 to v2.6.5. To apply the upgrade to your files permanently, run `python -m lightning.pytorch.utilities.upgrade_checkpoint C:\Users\Stefa\.cache\huggingface\hub\models--pyannote--embedding\snapshots\4db4899737a38b2d618bbd74350915aa10293cb2\pytorch_model.bin`
+23:27:59 │ INFO    │ lightning.pytorch.utilities.migration.utils │ Lightning automatically upgraded your loaded checkpoint from v1.2.7 to v2.6.5. To apply the upgrade to your files permanently, run `python -m lightning.pytorch.utilities.upgrade_checkpoint C:\Users\Stefa\.cache\huggingface\hub\models--pyannote--embedding\snapshots\4db4899737a38b2d618bbd74350915aa10293cb2\pytorch_model.bin`
+23:27:59 │ INFO    │ dirizher.audio.diarize │ 🎙 группа 0: ближайший голос «Даня» cos=0.417 (порог именования 0.82 → Speaker_N)
+23:27:59 │ INFO    │ dirizher.audio.diarize │ Загружаю pyannote 3.1 (диаризация встречи)…
+23:28:56 │ INFO    │ dirizher.audio.diarize │ 🎙 группа 0: ближайший голос «Энди» cos=0.640 (порог именования 0.82 → Speaker_N)
+23:28:56 │ INFO    │ dirizher.audio.diarize │ 🎙 группа 1: ближайший голос «Даня» cos=0.607 (порог именования 0.82 → Speaker_N)
+23:28:56 │ INFO    │ dirizher.audio.diarize │ 🎙 группа 2: ближайший голос «vaiforic» cos=0.660 (порог именования 0.82 → Speaker_N)
+23:28:58 │ WARNING │ dirizher.llm.groq      │ Groq ключ #1/3 исчерпан (429) — переключаюсь
+23:28:59 │ WARNING │ dirizher.llm.groq      │ Groq ключ #2/3 исчерпан (429) — переключаюсь
+23:29:00 │ INFO    │ dirizher.service       │ Извлечено задач: 4 (источник=meeting)
+23:29:00 │ INFO    │ dirizher.service       │ Пропуск: исполнитель «Данила» не упомянут в источнике — выдумка
+23:29:00 │ INFO    │ dirizher.service       │ Пропуск: исполнитель «Андрей» не упомянут в источнике — выдумка
+23:29:00 │ INFO    │ dirizher.service       │ Пропуск (conf=0.50 < 0.60): построить огромный дом на 500 комнат
+23:29:00 │ INFO    │ dirizher.meeting       │ Встреча обработана: задач=1
+23:34:22 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+23:34:22 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+23:34:22 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+23:34:22 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+08:51:24 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=mock yougile=mock audio=live
+08:51:26 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+08:51:26 │ INFO    │ dirizher.llm           │ LLM-провайдер: mock (эвристика, без сети)
+08:51:26 │ INFO    │ dirizher.yougile       │ Канбан-доска: mock (в памяти)
+08:51:26 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+08:51:26 │ WARNING │ dirizher.audio         │ Groq Whisper включён, но ключей нет — откатываюсь в mock
+08:51:26 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 38
+08:51:26 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=mock yougile=mock audio=live
+08:51:26 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:51:26 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:51:26 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:51:26 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:51:26 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+08:51:26 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+08:51:26 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+08:51:26 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+08:51:26 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+08:51:26 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+08:52:24 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+08:52:24 │ ERROR   │ asyncio                │ Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x000002562797C050>
+08:52:44 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+08:52:46 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+08:52:46 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+08:53:03 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+08:53:05 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+08:53:05 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+08:53:05 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+08:53:05 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+08:53:05 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+08:53:05 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+08:53:05 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 38
+08:53:05 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+08:53:06 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:53:06 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:53:06 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:53:06 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:53:06 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+08:53:06 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+08:53:06 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+08:53:06 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+08:53:06 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+08:53:06 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+08:53:24 │ ERROR   │ asyncio                │ Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x000001B64F4752B0>
+08:53:28 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+08:53:30 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+08:53:30 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+08:53:30 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+08:53:30 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+08:53:30 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+08:53:30 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+08:53:30 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 38
+08:53:30 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+08:53:30 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:53:30 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:53:30 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:53:30 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:53:30 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+08:53:30 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+08:53:30 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+08:53:30 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+08:53:30 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+08:53:30 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+08:54:03 │ ERROR   │ asyncio                │ Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x00000278A8C652B0>
+08:55:27 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+08:55:29 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+08:55:29 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+08:55:29 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+08:55:29 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+08:55:29 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+08:55:29 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+08:55:29 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 38
+08:55:29 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+08:55:29 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:55:29 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:55:29 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:55:29 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+08:55:29 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+08:55:29 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+08:55:29 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+08:55:29 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+08:55:29 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+08:55:29 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+08:55:30 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+08:55:30 │ INFO    │ aiogram.dispatcher     │ Start polling
+08:55:30 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+08:56:02 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+08:56:02 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+08:56:02 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+08:56:02 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+09:19:04 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+09:19:06 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+09:19:06 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+09:19:06 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+09:19:06 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+09:19:06 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+09:19:06 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+09:19:06 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 38
+09:19:06 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+09:19:07 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:19:07 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:19:07 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:19:07 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:19:07 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+09:19:07 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+09:19:07 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+09:19:07 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+09:19:07 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+09:19:07 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+09:19:07 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+09:19:07 │ INFO    │ aiogram.dispatcher     │ Start polling
+09:19:07 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+09:20:39 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+09:20:39 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+09:20:39 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+09:20:39 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+09:28:14 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+09:28:16 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+09:28:16 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+09:28:17 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+09:28:17 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+09:28:17 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+09:28:17 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+09:28:17 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 38
+09:28:17 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+09:28:17 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:28:17 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:28:17 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:28:17 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:28:17 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+09:28:17 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+09:28:17 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+09:28:17 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+09:28:17 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+09:28:17 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+09:28:17 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+09:28:17 │ INFO    │ aiogram.dispatcher     │ Start polling
+09:28:17 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+09:31:12 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+09:31:12 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+09:31:12 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+09:31:12 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+09:33:19 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+09:33:21 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+09:33:21 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+09:33:21 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+09:33:21 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+09:33:21 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+09:33:21 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+09:33:21 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 38
+09:33:21 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+09:33:21 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:33:21 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:33:21 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:33:21 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:33:21 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+09:33:21 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+09:33:21 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+09:33:21 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+09:33:21 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+09:33:21 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+09:33:27 │ ERROR   │ asyncio                │ Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x000001FC62B6D6A0>
+09:33:53 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+09:33:55 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+09:33:55 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+09:33:55 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+09:33:55 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+09:33:56 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+09:33:56 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+09:33:56 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 38
+09:33:56 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+09:33:56 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:33:56 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:33:56 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:33:56 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:33:56 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+09:33:56 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+09:33:56 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+09:33:56 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+09:33:56 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+09:33:56 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+09:33:56 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+09:33:56 │ INFO    │ aiogram.dispatcher     │ Start polling
+09:33:56 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+09:34:40 │ ERROR   │ aiogram.dispatcher     │ Failed to fetch updates - TelegramNetworkError: HTTP Client says - ClientOSError: [WinError 1236] Подключение к сети было разорвано локальной системой
+09:34:40 │ WARNING │ aiogram.dispatcher     │ Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8528749837)
+09:34:44 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+09:34:44 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+09:34:44 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+09:34:44 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+09:35:18 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+09:35:20 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+09:35:20 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+09:35:20 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+09:35:20 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+09:35:20 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+09:35:20 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+09:35:20 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 38
+09:35:20 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+09:35:20 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:35:20 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:35:20 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:35:20 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:35:20 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+09:35:20 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+09:35:20 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+09:35:20 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+09:35:20 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+09:35:20 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+09:35:21 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+09:35:21 │ INFO    │ aiogram.dispatcher     │ Start polling
+09:35:21 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+09:36:58 │ INFO    │ dirizher.service       │ Извлечено задач: 1 (источник=chat)
+09:37:05 │ INFO    │ dirizher.yougile       │ 🗂️  карточка создана #73634992-bfa0-44d0-b165-31de0e38df2e: Оформить дашборд по продажам за квартал
+09:37:23 │ INFO    │ dirizher.jobs          │ Напоминаний отправлено: 3
+09:37:37 │ INFO    │ dirizher.service       │ Сверка с доской: удалено призраков из памяти: 38
+09:38:47 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+09:59:27 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+09:59:27 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+09:59:27 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+09:59:27 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+09:59:28 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+09:59:30 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+09:59:30 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+09:59:31 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+09:59:31 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+09:59:31 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+09:59:31 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+09:59:31 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 1
+09:59:31 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+09:59:31 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:59:31 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:59:31 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:59:31 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+09:59:31 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+09:59:31 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+09:59:31 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+09:59:31 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+09:59:31 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+09:59:31 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+09:59:31 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+09:59:31 │ INFO    │ aiogram.dispatcher     │ Start polling
+09:59:31 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+10:00:41 │ INFO    │ dirizher.jobs          │ Напоминаний отправлено: 0
+10:03:18 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+10:03:18 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+10:03:18 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+10:03:18 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+13:18:30 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+13:18:32 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+13:18:32 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+13:18:32 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+13:18:32 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+13:18:33 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+13:18:33 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+13:18:33 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 1
+13:18:33 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+13:18:33 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+13:18:33 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+13:18:33 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+13:18:33 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+13:18:33 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+13:18:33 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+13:18:33 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+13:18:33 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+13:18:33 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+13:18:33 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+13:18:33 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+13:18:33 │ INFO    │ aiogram.dispatcher     │ Start polling
+13:18:34 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+13:19:02 │ INFO    │ dirizher.service       │ Извлечено задач: 1 (источник=chat)
+13:19:05 │ INFO    │ dirizher.yougile       │ 🗂️  карточка создана #6face732-35b6-4de8-b3b4-101ff767dde9: Сделать сайт на ФастАПИ
+13:19:57 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+13:19:57 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+13:19:57 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+13:19:57 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+14:33:06 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+14:33:09 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+14:33:09 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+14:33:10 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+14:33:10 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+14:33:10 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+14:33:10 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+14:33:10 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+14:33:10 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:33:10 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+14:33:10 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+14:33:11 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+14:33:11 │ INFO    │ aiogram.dispatcher     │ Start polling
+14:33:11 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+14:33:12 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+14:37:27 │ WARNING │ dirizher.service       │ Сверка с доской пропущена (доска недоступна): 
+14:38:35 │ WARNING │ dirizher.bot.callbacks │ Не удалось сменить статус карточки 6face732-35b6-4de8-b3b4-101ff767dde9: 
+14:39:47 │ INFO    │ dirizher.jobs          │ Напоминаний отправлено: 0
+14:41:25 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+14:41:25 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+14:41:25 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+14:41:25 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+14:42:17 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+14:42:20 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+14:42:20 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+14:42:20 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+14:42:20 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+14:42:20 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+14:42:20 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+14:42:20 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+14:42:20 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:42:21 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+14:42:21 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+14:42:28 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+14:42:28 │ ERROR   │ asyncio                │ Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x000002069DE15550>
+14:42:36 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+14:42:39 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+14:42:39 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+14:42:39 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+14:42:39 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+14:42:39 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+14:42:39 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+14:42:39 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+14:42:39 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:42:40 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+14:42:40 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+14:42:40 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+14:42:40 │ INFO    │ aiogram.dispatcher     │ Start polling
+14:42:40 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+14:43:42 │ ERROR   │ aiogram.event          │ Cause exception while process update id=337274468 by bot id=8528749837
+TelegramNetworkError: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+Traceback (most recent call last):
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 1325, in _wrap_create_connection
+    return await self._loop.create_connection(*args, **kwargs, sock=sock)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python314\Lib\asyncio\base_events.py", line 1198, in create_connection
+    transport, protocol = await self._create_connection_transport(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ssl_shutdown_timeout=ssl_shutdown_timeout)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python314\Lib\asyncio\base_events.py", line 1231, in _create_connection_transport
+    await waiter
+ConnectionAbortedError: SSL handshake is taking longer than 60.0 seconds: aborting the connection
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\client\session\aiohttp.py", line 167, in make_request
+    async with session.post(
+               ~~~~~~~~~~~~^
+        url,
+        ^^^^
+        data=form,
+        ^^^^^^^^^^
+        timeout=self.timeout if timeout is None else timeout,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ) as resp:
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\client.py", line 1521, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\client.py", line 788, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\client.py", line 742, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        req, traces=traces, timeout=real_timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 672, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 1251, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 1623, in _create_direct_connection
+    raise last_exc
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 1592, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 1333, in _wrap_create_connection
+    raise client_error(req.connection_key, exc) from exc
+aiohttp.client_exceptions.ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 320, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 164, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 27, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 58, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\fsm\middleware.py", line 43, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 126, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 71, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 283, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 193, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 193, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 185, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 126, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 71, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\src\dirizher\bot\handlers\commands.py", line 521, in cmd_tasks
+    await send_my_tasks(message, c)
+  File "P:\Python\Vaybuklek\src\dirizher\bot\handlers\commands.py", line 457, in send_my_tasks
+    await message.answer(f"{whose} нет открытых задач 🎉")
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\methods\base.py", line 82, in emit
+    return await bot(self)
+           ^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\client\bot.py", line 504, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\client\session\base.py", line 259, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\client\session\aiohttp.py", line 176, in make_request
+    raise TelegramNetworkError(method=method, message=f"{type(e).__name__}: {e}") from e
+aiogram.exceptions.TelegramNetworkError: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+14:43:43 │ ERROR   │ aiogram.event          │ Cause exception while process update id=337274467 by bot id=8528749837
+TelegramNetworkError: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+Traceback (most recent call last):
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 1325, in _wrap_create_connection
+    return await self._loop.create_connection(*args, **kwargs, sock=sock)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python314\Lib\asyncio\base_events.py", line 1198, in create_connection
+    transport, protocol = await self._create_connection_transport(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        ssl_shutdown_timeout=ssl_shutdown_timeout)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python314\Lib\asyncio\base_events.py", line 1231, in _create_connection_transport
+    await waiter
+ConnectionAbortedError: SSL handshake is taking longer than 60.0 seconds: aborting the connection
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\client\session\aiohttp.py", line 167, in make_request
+    async with session.post(
+               ~~~~~~~~~~~~^
+        url,
+        ^^^^
+        data=form,
+        ^^^^^^^^^^
+        timeout=self.timeout if timeout is None else timeout,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ) as resp:
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\client.py", line 1521, in __aenter__
+    self._resp: _RetType = await self._coro
+                           ^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\client.py", line 788, in _request
+    resp = await handler(req)
+           ^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\client.py", line 742, in _connect_and_send_request
+    conn = await self._connector.connect(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        req, traces=traces, timeout=real_timeout
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 672, in connect
+    proto = await self._create_connection(req, traces, timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 1251, in _create_connection
+    _, proto = await self._create_direct_connection(req, traces, timeout)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 1623, in _create_direct_connection
+    raise last_exc
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 1592, in _create_direct_connection
+    transp, proto = await self._wrap_create_connection(
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiohttp\connector.py", line 1333, in _wrap_create_connection
+    raise client_error(req.connection_key, exc) from exc
+aiohttp.client_exceptions.ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 320, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 164, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 27, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 58, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\fsm\middleware.py", line 43, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 126, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 71, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 283, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 193, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 193, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 185, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 126, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 71, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\src\dirizher\bot\handlers\commands.py", line 521, in cmd_tasks
+    await send_my_tasks(message, c)
+  File "P:\Python\Vaybuklek\src\dirizher\bot\handlers\commands.py", line 457, in send_my_tasks
+    await message.answer(f"{whose} нет открытых задач 🎉")
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\methods\base.py", line 82, in emit
+    return await bot(self)
+           ^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\client\bot.py", line 504, in __call__
+    return await self.session(self, method, timeout=request_timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\client\session\base.py", line 259, in __call__
+    return cast(TelegramType, await middleware(bot, method))
+                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\client\session\aiohttp.py", line 176, in make_request
+    raise TelegramNetworkError(method=method, message=f"{type(e).__name__}: {e}") from e
+aiogram.exceptions.TelegramNetworkError: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+14:43:51 │ ERROR   │ aiogram.dispatcher     │ Failed to fetch updates - TelegramNetworkError: HTTP Client says - Request timeout error
+14:43:51 │ WARNING │ aiogram.dispatcher     │ Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8528749837)
+14:44:52 │ ERROR   │ aiogram.dispatcher     │ Failed to fetch updates - TelegramNetworkError: HTTP Client says - ClientConnectorError: Cannot connect to host api.telegram.org:443 ssl:default [None]
+14:44:52 │ WARNING │ aiogram.dispatcher     │ Sleep for 1.288060 seconds and try again... (tryings = 1, bot id = 8528749837)
+14:44:55 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+14:44:55 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+14:44:55 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+14:44:55 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+14:45:09 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+14:45:12 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+14:45:12 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+14:45:12 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+14:45:12 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+14:45:12 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+14:45:12 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+14:45:12 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+14:45:12 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:45:13 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+14:45:13 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+14:45:39 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+14:45:39 │ ERROR   │ asyncio                │ Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x000001F355AB5550>
+14:45:40 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+14:45:42 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+14:45:42 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+14:45:43 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+14:45:43 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+14:45:43 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+14:45:43 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+14:45:43 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+14:45:43 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:45:43 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+14:45:43 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+14:45:54 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+14:45:55 │ ERROR   │ asyncio                │ Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x000002041EDF5550>
+14:46:10 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+14:46:12 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+14:46:12 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+14:46:13 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+14:46:13 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+14:46:13 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+14:46:13 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+14:46:13 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+14:46:13 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+14:46:13 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+14:46:13 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+14:46:14 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+14:46:14 │ INFO    │ aiogram.dispatcher     │ Start polling
+14:46:14 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+14:46:15 │ INFO    │ dirizher.audio.recorder │ 🔴 Запись встречи начата (устройство: Динамики (EDIFIER R19BT))
+14:46:35 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+14:46:35 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+14:46:35 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+14:46:35 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+15:53:57 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+15:54:00 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+15:54:00 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+15:54:00 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+15:54:00 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+15:54:01 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+15:54:01 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+15:54:01 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+15:54:01 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+15:54:01 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+15:54:01 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+15:54:02 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+15:54:02 │ INFO    │ aiogram.dispatcher     │ Start polling
+15:54:02 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+15:55:36 │ WARNING │ dirizher.service       │ Сверка с доской пропущена (доска недоступна): 
+15:57:54 │ ERROR   │ aiogram.event          │ Cause exception while process update id=337274528 by bot id=8528749837
+ConnectTimeout: 
+Traceback (most recent call last):
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_transports\default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        pool_request.request
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_async\connection.py", line 101, in handle_async_request
+    raise exc
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_async\connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_async\connection.py", line 156, in _connect
+    stream = await stream.start_tls(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_backends\anyio.py", line 67, in start_tls
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 320, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 164, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 27, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 58, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\fsm\middleware.py", line 43, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 126, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 71, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 283, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 193, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 193, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 185, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 126, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 71, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\src\dirizher\bot\handlers\commands.py", line 579, in cmd_tasks
+    await send_my_tasks(message, c)
+  File "P:\Python\Vaybuklek\src\dirizher\bot\handlers\commands.py", line 494, in send_my_tasks
+    cards = await c.board.list_cards()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\src\dirizher\integrations\yougile.py", line 217, in list_cards
+    r = await self._http.get("/tasks", params={"limit": 1000})
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_transports\default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout
+15:58:41 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+15:58:41 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+15:58:41 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+15:58:41 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+15:58:43 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+15:58:46 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+15:58:46 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+15:58:47 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+15:58:47 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+15:58:47 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+15:58:47 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+15:58:47 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+15:58:47 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+15:58:47 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+15:58:47 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+15:58:48 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+15:58:48 │ INFO    │ aiogram.dispatcher     │ Start polling
+15:58:48 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+15:59:13 │ ERROR   │ aiogram.event          │ Cause exception while process update id=337274530 by bot id=8528749837
+ConnectTimeout: 
+Traceback (most recent call last):
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_transports\default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_transports\default.py", line 394, in handle_async_request
+    resp = await self._pool.handle_async_request(req)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 256, in handle_async_request
+    raise exc from None
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_async\connection_pool.py", line 236, in handle_async_request
+    response = await connection.handle_async_request(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        pool_request.request
+        ^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_async\connection.py", line 101, in handle_async_request
+    raise exc
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_async\connection.py", line 78, in handle_async_request
+    stream = await self._connect(request)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_async\connection.py", line 156, in _connect
+    stream = await stream.start_tls(**kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_backends\anyio.py", line 67, in start_tls
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpcore\_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 320, in _process_update
+    response = await self.feed_update(bot, update, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 164, in feed_update
+    response = await self.update.wrap_outer_middleware(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<7 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\middlewares\error.py", line 27, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\middlewares\user_context.py", line 58, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\fsm\middleware.py", line 43, in __call__
+    return await handler(event, data)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 126, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 71, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\dispatcher.py", line 283, in _listen_update
+    return await self.propagate_event(update_type=update_type, event=event, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 193, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 193, in _propagate_event
+    response = await router.propagate_event(update_type=update_type, event=event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 165, in propagate_event
+    return await observer.wrap_outer_middleware(_wrapped, event=event, data=kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 157, in _wrapped
+    return await self._propagate_event(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\router.py", line 185, in _propagate_event
+    response = await observer.trigger(event, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\telegram.py", line 126, in trigger
+    return await wrapped_inner(event, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\aiogram\dispatcher\event\handler.py", line 71, in call
+    return await wrapped()
+           ^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\src\dirizher\bot\handlers\commands.py", line 579, in cmd_tasks
+    await send_my_tasks(message, c)
+  File "P:\Python\Vaybuklek\src\dirizher\bot\handlers\commands.py", line 494, in send_my_tasks
+    cards = await c.board.list_cards()
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\src\dirizher\integrations\yougile.py", line 217, in list_cards
+    r = await self._http.get("/tasks", params={"limit": 1000})
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1768, in get
+    return await self.request(
+           ^^^^^^^^^^^^^^^^^^^
+    ...<9 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1540, in request
+    return await self.send(request, auth=auth, follow_redirects=follow_redirects)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1629, in send
+    response = await self._send_handling_auth(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1657, in _send_handling_auth
+    response = await self._send_handling_redirects(
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+    )
+    ^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1694, in _send_handling_redirects
+    response = await self._send_single_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_client.py", line 1730, in _send_single_request
+    response = await transport.handle_async_request(request)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_transports\default.py", line 393, in handle_async_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "C:\Users\andre\AppData\Local\Programs\Python\Python314\Lib\contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "P:\Python\Vaybuklek\venv\Lib\site-packages\httpx\_transports\default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout
+16:01:25 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+16:01:25 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+16:01:25 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+16:01:25 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+16:01:27 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+16:01:30 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+16:01:30 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+16:01:31 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+16:01:31 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+16:01:31 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+16:01:31 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+16:01:31 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+16:01:31 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:01:31 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+16:01:31 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+16:01:32 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+16:01:32 │ INFO    │ aiogram.dispatcher     │ Start polling
+16:01:32 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+16:02:50 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+16:02:50 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+16:02:50 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+16:02:50 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+16:13:58 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+16:14:00 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+16:14:00 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+16:14:00 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+16:14:00 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+16:14:01 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+16:14:01 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+16:14:01 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+16:14:01 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:14:01 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+16:14:01 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+16:14:01 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+16:14:01 │ INFO    │ aiogram.dispatcher     │ Start polling
+16:14:02 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+16:14:03 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+16:15:06 │ INFO    │ dirizher.service       │ Извлечено задач: 1 (источник=chat)
+16:15:09 │ INFO    │ dirizher.yougile       │ 🗂️  карточка создана #5a9aa0e5-9145-4a7b-9311-00fc8ec412a6: сделать презентацию
+16:18:26 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+16:20:14 │ INFO    │ dirizher.service       │ Извлечено задач: 1 (источник=chat)
+16:20:37 │ INFO    │ dirizher.service       │ Извлечено задач: 1 (источник=chat)
+16:20:54 │ INFO    │ dirizher.service       │ Извлечено задач: 1 (источник=chat)
+16:21:16 │ INFO    │ dirizher.service       │ Извлечено задач: 1 (источник=chat)
+16:22:54 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+16:24:51 │ INFO    │ dirizher.service       │ Извлечено задач: 1 (источник=chat)
+16:25:24 │ INFO    │ dirizher.jobs          │ Напоминаний отправлено: 0
+16:25:27 │ INFO    │ dirizher.service       │ Сверка с доской: удалено призраков из памяти: 1
+16:28:25 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+16:29:01 │ INFO    │ apscheduler.executors.default │ Running job "run_trash_purge (trigger: interval[0:15:00], next run at: 2026-06-09 13:44:01 MSK)" (scheduled at 2026-06-09 13:29:01.278759+03:00)
+16:29:01 │ INFO    │ apscheduler.executors.default │ Job "run_trash_purge (trigger: interval[0:15:00], next run at: 2026-06-09 13:44:01 MSK)" executed successfully
+16:30:00 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+16:31:18 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+16:31:30 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+16:32:47 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+16:32:59 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+16:33:37 │ INFO    │ dirizher.service       │ Извлечено задач: 0 (источник=chat)
+16:35:58 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+16:35:58 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+16:35:58 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+16:35:58 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+16:46:13 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+16:46:15 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+16:46:15 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+16:46:15 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+16:46:15 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+16:46:15 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+16:46:15 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+16:46:15 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+16:46:15 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:46:16 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+16:46:16 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+16:46:16 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+16:46:16 │ ERROR   │ asyncio                │ Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x0000016371799D30>
+16:46:22 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+16:46:24 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+16:46:24 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 2
+16:46:24 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 2
+16:46:24 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+16:46:25 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: signal (MFCC, офлайн, без HF-токена)
+16:46:25 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+16:46:25 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+16:46:25 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+16:46:25 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10,15 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+16:46:25 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+16:46:25 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+16:46:25 │ INFO    │ aiogram.dispatcher     │ Start polling
+16:46:25 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+16:48:51 │ ERROR   │ aiogram.dispatcher     │ Failed to fetch updates - TelegramNetworkError: HTTP Client says - ClientOSError: [WinError 1236] Подключение к сети было разорвано локальной системой
+16:48:51 │ WARNING │ aiogram.dispatcher     │ Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8528749837)
+16:48:54 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+16:48:54 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+16:48:54 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+16:48:54 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+22:22:34 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+22:22:36 │ WARNING │ dirizher.memory        │ ChromaDB недоступен (No module named 'chromadb') — лексический fallback
+22:22:36 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+22:22:36 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 3
+22:22:36 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 3
+22:22:36 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+22:22:37 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: pyannote (pyannote/wespeaker-voxceleb-resnet34-LM)
+22:22:37 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+22:22:37 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+22:22:37 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:22:37 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+22:22:37 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+22:22:37 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+22:22:37 │ ERROR   │ asyncio                │ Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x000001B994626CF0>
+22:22:47 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+22:22:49 │ WARNING │ dirizher.memory        │ ChromaDB недоступен (No module named 'chromadb') — лексический fallback
+22:22:49 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+22:22:49 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 3
+22:22:49 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 3
+22:22:49 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+22:22:49 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: pyannote (pyannote/wespeaker-voxceleb-resnet34-LM)
+22:22:49 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+22:22:49 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+22:22:49 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:22:50 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+22:22:50 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+22:22:50 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+22:22:50 │ INFO    │ aiogram.dispatcher     │ Start polling
+22:22:50 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+22:26:37 │ ERROR   │ aiogram.dispatcher     │ Failed to fetch updates - TelegramNetworkError: HTTP Client says - ClientOSError: [WinError 1236] Подключение к сети было разорвано локальной системой
+22:26:37 │ WARNING │ aiogram.dispatcher     │ Sleep for 1.000000 seconds and try again... (tryings = 0, bot id = 8528749837)
+22:26:42 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+22:26:42 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+22:26:42 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+22:26:42 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+22:31:34 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+22:31:36 │ WARNING │ dirizher.memory        │ ChromaDB недоступен (No module named 'chromadb') — лексический fallback
+22:31:36 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+22:31:36 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 3
+22:31:36 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 3
+22:31:36 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+22:31:36 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: pyannote (pyannote/wespeaker-voxceleb-resnet34-LM)
+22:31:36 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+22:31:36 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 0
+22:31:36 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:31:37 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+22:31:37 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+22:31:37 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+22:31:37 │ INFO    │ aiogram.dispatcher     │ Start polling
+22:31:37 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+22:33:12 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+22:33:12 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+22:33:12 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+22:33:12 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+22:33:15 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+22:33:17 │ WARNING │ dirizher.memory        │ ChromaDB недоступен (No module named 'chromadb') — лексический fallback
+22:33:17 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=lexical, threshold=0.83
+22:33:17 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 3
+22:33:17 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 3
+22:33:17 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+22:33:17 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: pyannote (pyannote/wespeaker-voxceleb-resnet34-LM)
+22:33:17 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+22:33:17 │ INFO    │ dirizher.state         │ Состояние загружено: участников 4, задач 2, команд 1
+22:33:17 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+22:33:18 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+22:33:18 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+22:33:18 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+22:33:18 │ INFO    │ aiogram.dispatcher     │ Start polling
+22:33:18 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+22:33:42 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+22:33:42 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+22:33:42 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+22:33:42 │ INFO    │ dirizher.main          │ Остановлено пользователем.
