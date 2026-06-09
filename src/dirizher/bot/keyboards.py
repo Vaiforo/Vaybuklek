@@ -9,6 +9,11 @@ from ..domain.enums import TaskStatus
 from .callback_data import BoardCD, ConfirmCD, ForgetCD, IntroCD, TaskCD
 
 
+def _button(text: str, callback_data) -> InlineKeyboardButton:
+    packed = callback_data.pack() if hasattr(callback_data, "pack") else callback_data
+    return InlineKeyboardButton(text=text, callback_data=packed)
+
+
 def confirm_keyboard(pid: str, *, claim_name: str | None = None) -> InlineKeyboardMarkup:
     kb = InlineKeyboardBuilder()
     kb.button(text="✅ Подтвердить", callback_data=ConfirmCD(action="confirm", pid=pid))
@@ -60,8 +65,8 @@ def clarify_keyboard(pid: str) -> InlineKeyboardMarkup:
 def task_actions_keyboard(task_id: str) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[[
-            InlineKeyboardButton(text="▶️ В работу", callback_data=TaskCD(action="start", task_id=task_id).pack()),
-            InlineKeyboardButton(text="✅ Готово", callback_data=TaskCD(action="done", task_id=task_id).pack()),
+            _button("▶️ В работу", TaskCD(action="start", task_id=task_id)),
+            _button("✅ Готово", TaskCD(action="done", task_id=task_id)),
         ]]
     )
 
@@ -80,19 +85,20 @@ def board_task_keyboard(card_id: str, current: TaskStatus, *, confirm_delete: bo
 
     При confirm_delete показываем подтверждение удаления вместо обычного ряда.
     """
-    status_row = []
-    for status, (label, action) in _STATUS_BTN.items():
-        mark = "✓ " if status == current else ""
-        status_row.append(
-            InlineKeyboardButton(text=f"{mark}{label}", callback_data=BoardCD(action=action, cid=card_id).pack())
+    status_row = [
+        _button(
+            f"{'✓ ' if status == current else ''}{label}",
+            BoardCD(action=action, cid=card_id),
         )
+        for status, (label, action) in _STATUS_BTN.items()
+    ]
 
-    if confirm_delete:
-        confirm_row = [
-            InlineKeyboardButton(text="🗑️ Да, удалить", callback_data=BoardCD(action="del_yes", cid=card_id).pack()),
-            InlineKeyboardButton(text="↩️ Отмена", callback_data=BoardCD(action="del_no", cid=card_id).pack()),
+    action_row = (
+        [
+            _button("🗑️ Да, удалить", BoardCD(action="del_yes", cid=card_id)),
+            _button("↩️ Отмена", BoardCD(action="del_no", cid=card_id)),
         ]
-        return InlineKeyboardMarkup(inline_keyboard=[status_row, confirm_row])
-
-    delete_row = [InlineKeyboardButton(text="🗑️ Удалить", callback_data=BoardCD(action="del", cid=card_id).pack())]
-    return InlineKeyboardMarkup(inline_keyboard=[status_row, delete_row])
+        if confirm_delete
+        else [_button("🗑️ Удалить", BoardCD(action="del", cid=card_id))]
+    )
+    return InlineKeyboardMarkup(inline_keyboard=[status_row, action_row])
