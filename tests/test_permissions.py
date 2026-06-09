@@ -132,6 +132,74 @@ def test_clear_can_drop_team_structure_but_keep_superuser():
     assert registry.get_by_user_id(1).member_team_ids == []
 
 
+async def test_reset_bot_state_keeps_only_superusers_and_persists(tmp_path):
+    from dirizher.bot.handlers.commands import _reset_bot_state
+    from dirizher.config import Settings
+    from dirizher.container import AppContainer
+
+    settings = Settings()
+    settings.memory.state_path = str(tmp_path / "state.json")
+    settings.memory.project_snapshot = str(tmp_path / "project.md")
+    settings.memory.chroma_path = str(tmp_path / "chroma")
+    settings.memory.backend = "lexical"
+    settings.yougile.api_key = ""
+
+    c = AppContainer(settings)
+    root = c.team.grant_superuser(TeamMember(user_id=1, username="root"))
+    team = c.team.add_team(Team(name="Dev"))
+    c.team.assign_member_to_team(root, team, leader=True)
+    c.team.assign_member_to_team(TeamMember(user_id=2, username="worker"), team)
+    c.repo.add(Task(title="Reset me", assignee="worker"))
+    c.persist()
+
+    tasks, cards, forgotten = await _reset_bot_state(c, keep_superusers=True)
+
+    assert tasks == 1
+    assert cards == 0
+    assert forgotten == 1
+    assert [m.username for m in c.team.all()] == ["root"]
+    assert c.team.get_by_user_id(1).leader_team_ids == []
+    assert c.team.get_by_user_id(2) is None
+    assert c.team.teams() == []
+
+    reborn = AppContainer(settings)
+    assert [m.username for m in reborn.team.all()] == ["root"]
+    assert reborn.repo.all() == []
+    assert reborn.team.teams() == []
+
+
+async def test_hard_reset_bot_state_removes_even_superusers_and_persists(tmp_path):
+    from dirizher.bot.handlers.commands import _reset_bot_state
+    from dirizher.config import Settings
+    from dirizher.container import AppContainer
+
+    settings = Settings()
+    settings.memory.state_path = str(tmp_path / "state.json")
+    settings.memory.project_snapshot = str(tmp_path / "project.md")
+    settings.memory.chroma_path = str(tmp_path / "chroma")
+    settings.memory.backend = "lexical"
+    settings.yougile.api_key = ""
+
+    c = AppContainer(settings)
+    c.team.grant_superuser(TeamMember(user_id=1, username="root"))
+    c.team.register(TeamMember(user_id=2, username="worker"))
+    c.repo.add(Task(title="Hard reset me"))
+    c.persist()
+
+    tasks, cards, forgotten = await _reset_bot_state(c, keep_superusers=False)
+
+    assert tasks == 1
+    assert cards == 0
+    assert forgotten == 2
+    assert c.team.all() == []
+    assert c.team.superuser_exists() is False
+
+    reborn = AppContainer(settings)
+    assert reborn.team.all() == []
+    assert reborn.repo.all() == []
+    assert reborn.team.superuser_exists() is False
+
+
 def test_multi_assignee_lookup_and_self_permission():
     registry = TeamRegistry()
     member = registry.register(TeamMember(user_id=10, username="alice", full_name="Alice"))

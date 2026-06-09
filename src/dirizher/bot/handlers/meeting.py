@@ -142,7 +142,7 @@ async def _suggest_learning(c: AppContainer, bot, chat_id: int, segments: list) 
     await bot.send_message(
         chat_id,
         "🎓 Кого-то отметил как "
-        + ", ".join(f"<b>{esc(l)}</b>" for l in labels)
+        + ", ".join(f"<b>{esc(label)}</b>" for label in labels)
         + ". Подпишите голос — запомню его из этой записи (loopback-условия):\n"
         + f"<code>/who {example} Имя</code>",
     )

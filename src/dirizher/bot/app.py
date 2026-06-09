@@ -36,6 +36,7 @@ BOT_COMMANDS = [
     BotCommand(command="team_del_member", description="👤 Удалить из команды"),
     BotCommand(command="no_team_manager", description="🧭 Руководитель без команды"),
     BotCommand(command="del_manager", description="🧭 Снять руководителя без команды"),
+    BotCommand(command="hard_reset", description="🧨 Сброс включая суперюзеров"),
 ]
 
 
