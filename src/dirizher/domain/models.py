@@ -62,6 +62,7 @@ class TeamMember(BaseModel):
     dm_chat_id: int | None = None     # личный чат с ботом для персональных уведомлений
     is_superuser: bool = False
     is_no_team_manager: bool = False  # руководитель слоя «нет команды» в беседе
+    notify_gamification: bool = False  # личные уведомления об XP, уровнях и ачивках
     leader_team_ids: list[str] = Field(default_factory=list)
     member_team_ids: list[str] = Field(default_factory=list)
 

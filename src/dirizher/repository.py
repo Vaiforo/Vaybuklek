@@ -113,6 +113,8 @@ class TeamRegistry:
                 existing.dm_chat_id = member.dm_chat_id or existing.dm_chat_id
                 existing.is_superuser = member.is_superuser or existing.is_superuser
                 existing.is_no_team_manager = member.is_no_team_manager or existing.is_no_team_manager
+                if "notify_gamification" in member.model_fields_set:
+                    existing.notify_gamification = member.notify_gamification
                 for tid in member.leader_team_ids:
                     if tid not in existing.leader_team_ids:
                         existing.leader_team_ids.append(tid)
@@ -172,6 +174,12 @@ class TeamRegistry:
         saved.is_no_team_manager = True
         return saved
 
+    def revoke_no_team_manager(self, member: TeamMember) -> TeamMember:
+        """Снять руководителя слоя «нет команды»."""
+        saved = self.register(member)
+        saved.is_no_team_manager = False
+        return saved
+
     def add_team(self, team: Team) -> Team:
         self._teams[team.id] = team
         return team
@@ -203,6 +211,26 @@ class TeamRegistry:
                 team.manager_user_ids.append(saved.user_id)
             if team.id not in saved.leader_team_ids:
                 saved.leader_team_ids.append(team.id)
+        return saved
+
+    def remove_member_from_team(self, member: TeamMember, team: Team, *, leader: bool = False) -> TeamMember:
+        """Убрать участника или руководителя из команды.
+
+        `leader=True` снимает только роль руководителя; участником команды человек
+        остаётся. `leader=False` убирает человека из команды целиком, включая роль
+        руководителя этой команды.
+        """
+        saved = self.register(member)
+        if saved.user_id is None:
+            return saved
+        if leader:
+            team.manager_user_ids = [uid for uid in team.manager_user_ids if uid != saved.user_id]
+            saved.leader_team_ids = [tid for tid in saved.leader_team_ids if tid != team.id]
+            return saved
+        team.member_user_ids = [uid for uid in team.member_user_ids if uid != saved.user_id]
+        team.manager_user_ids = [uid for uid in team.manager_user_ids if uid != saved.user_id]
+        saved.member_team_ids = [tid for tid in saved.member_team_ids if tid != team.id]
+        saved.leader_team_ids = [tid for tid in saved.leader_team_ids if tid != team.id]
         return saved
 
     def all(self) -> list[TeamMember]:

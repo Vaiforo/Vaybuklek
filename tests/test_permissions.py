@@ -5,6 +5,7 @@ from dirizher.permissions import (
     can_create_task,
     can_delete_task,
     can_manage_knowledge,
+    can_start_meeting,
     can_view_member_tasks,
 )
 from dirizher.repository import TaskRepository, TeamRegistry
@@ -62,6 +63,57 @@ def test_role_permissions_are_scoped_to_team_and_own_status():
     # Любой руководитель может смотреть чужие задачи, но права на изменение остаются по команде.
     assert can_view_member_tasks(outsider_lead, subordinate) is True
 
+
+def test_meeting_start_is_limited_to_leaders_and_superusers():
+    registry = TeamRegistry()
+    root = registry.grant_superuser(TeamMember(user_id=1, username="root"))
+    dev = registry.add_team(Team(name="Dev"))
+    leader = registry.assign_member_to_team(TeamMember(user_id=2, username="lead"), dev, leader=True)
+    member = registry.assign_member_to_team(TeamMember(user_id=3, username="worker"), dev)
+    no_team_leader = registry.grant_no_team_manager(TeamMember(user_id=4, username="freelead"))
+
+    assert can_start_meeting(root) is True
+    assert can_start_meeting(leader) is True
+    assert can_start_meeting(no_team_leader) is True
+    assert can_start_meeting(member) is False
+    assert can_start_meeting(None) is False
+
+    registry.remove_member_from_team(leader, dev, leader=True)
+    registry.revoke_no_team_manager(no_team_leader)
+
+    assert can_start_meeting(leader) is False
+    assert can_start_meeting(no_team_leader) is False
+
+
+def test_team_role_removal_updates_both_team_and_member():
+    registry = TeamRegistry()
+    dev = registry.add_team(Team(name="Dev"))
+    lead = registry.assign_member_to_team(TeamMember(user_id=1, username="lead"), dev, leader=True)
+    worker = registry.assign_member_to_team(TeamMember(user_id=2, username="worker"), dev)
+
+    registry.remove_member_from_team(lead, dev, leader=True)
+
+    assert lead.user_id not in dev.manager_user_ids
+    assert dev.id not in lead.leader_team_ids
+    assert lead.user_id in dev.member_user_ids
+    assert dev.id in lead.member_team_ids
+
+    registry.remove_member_from_team(worker, dev)
+
+    assert worker.user_id not in dev.member_user_ids
+    assert dev.id not in worker.member_team_ids
+
+
+def test_register_preserves_and_can_explicitly_disable_gamification_notifications():
+    registry = TeamRegistry()
+    member = registry.register(TeamMember(user_id=1, username="alice", notify_gamification=True))
+
+    registry.register(TeamMember(user_id=1, username="alice2"))
+    assert member.notify_gamification is True
+    assert member.username == "alice2"
+
+    registry.register(TeamMember(user_id=1, notify_gamification=False))
+    assert member.notify_gamification is False
 
 
 def test_clear_can_drop_team_structure_but_keep_superuser():
