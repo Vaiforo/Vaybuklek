@@ -123,6 +123,7 @@ HELP_ADMIN = f"""\
 <b>Опасная зона</b>
 • /board_clear — очистить доску
 • /reset_bot — полный сброс (кроме суперюзеров)
+• /hard_reset — полный сброс, включая суперюзеров
 • /forget — забыть всех участников
 """
 
@@ -528,14 +529,13 @@ async def cmd_board_clear(message: Message, command: CommandObject, c: AppContai
     await message.answer(f"🧹 Канбан-доска очищена. Удалено карточек: <b>{len(cards)}</b>.")
 
 
-@router.message(Command("reset_bot", "bot_clear"))
-async def cmd_reset_bot(message: Message, command: CommandObject, c: AppContainer) -> None:
-    actor = _actor(message, c)
-    if not is_superuser(actor):
-        return
-    if (command.args or "").strip().lower() not in {"confirm", "yes", "да", "подтверждаю"}:
-        await message.answer("⚠️ Полностью очистить задачи, доску, знания, заметки и участников кроме суперюзеров? Подтвердите: <code>/reset_bot confirm</code>")
-        return
+async def _reset_bot_state(c: AppContainer, *, keep_superusers: bool) -> tuple[int, int, int]:
+    """Очистить задачи, доску, кабинеты и реестр пользователей.
+
+    Возвращает (задач удалено, карточек удалено, участников забыто).
+    `keep_superusers=True` оставляет только суперюзеров; `False` чистит всех,
+    чтобы после hard reset первым суперюзером можно было назначиться заново.
+    """
     cards = await c.board.list_cards()
     for card in cards:
         await c.board.delete_card(card.id)
@@ -543,12 +543,42 @@ async def cmd_reset_bot(message: Message, command: CommandObject, c: AppContaine
         c.memory.forget(task.id)
     tasks = c.repo.clear()
     c.cabinet.clear_knowledge()
-    for member in c.team.all():
+    for member in list(c.team.all()):
         c.cabinet.clear_notes(member)
-    forgotten = c.team.clear(keep_superusers=True, clear_teams=True)
+    forgotten = c.team.clear(keep_superusers=keep_superusers, clear_teams=True)
     c.game.reset()
     c.persist()
-    await message.answer(f"🧹 Бот очищен: задач {tasks}, карточек {len(cards)}, забыто участников {forgotten}.")
+    return tasks, len(cards), forgotten
+
+
+@router.message(Command("reset_bot", "bot_clear"))
+async def cmd_reset_bot(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    if (command.args or "").strip().lower() not in {"confirm", "yes", "да", "подтверждаю"}:
+        await message.answer("⚠️ Полностью очистить задачи, доску, знания, заметки и всех участников кроме суперюзеров? Подтвердите: <code>/reset_bot confirm</code>")
+        return
+    tasks, cards, forgotten = await _reset_bot_state(c, keep_superusers=True)
+    await message.answer(f"🧹 Бот очищен: задач {tasks}, карточек {cards}, забыто участников {forgotten}. Суперюзеры сохранены.")
+
+
+@router.message(Command("hard_reset"))
+async def cmd_hard_reset(message: Message, command: CommandObject, c: AppContainer) -> None:
+    actor = _actor(message, c)
+    if not is_superuser(actor):
+        return
+    if (command.args or "").strip().lower() not in {"confirm", "yes", "да", "подтверждаю"}:
+        await message.answer(
+            "⚠️ Полностью очистить задачи, доску, знания, заметки и <b>всех пользователей, включая суперюзеров</b>? "
+            "Подтвердите: <code>/hard_reset confirm</code>"
+        )
+        return
+    tasks, cards, forgotten = await _reset_bot_state(c, keep_superusers=False)
+    await message.answer(
+        f"🧹 Жёсткий сброс выполнен: задач {tasks}, карточек {cards}, забыто участников {forgotten}. "
+        "Суперюзеров больше нет — первого можно назначить через /make_me_superuser."
+    )
 
 
 @router.message(Command("mode"))
