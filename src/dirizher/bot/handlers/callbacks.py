@@ -16,7 +16,7 @@ from ...logging_setup import get_logger
 from .. import keyboards as kb
 from .. import text as tx
 from ..callback_data import BoardCD, ConfirmCD, ForgetCD, PickCD, SettingsCD, TaskCD
-from ..flow import deliver_xp, finalize, notify_workload
+from ..flow import deliver_xp, finalize, notify_assignee, notify_workload
 from ..states import EditTask
 
 router = Router(name="callbacks")
@@ -53,17 +53,23 @@ async def _celebrate(c: AppContainer, message, task) -> None:
 
 async def _after_created(cb: CallbackQuery, c: AppContainer, created) -> None:
     if isinstance(cb.message, Message):
+        # Подтвердили задачу в (групповом) чате → шлём её исполнителям в личку.
+        await notify_assignee(cb.bot, c, created, cb.message.chat.id)
         await notify_workload(cb.bot, c, created.assignee, cb.message.chat.id)
 
 
 def _render_settings(member: TeamMember) -> str:
-    state = "✅ включены" if member.notify_gamification else "🔕 выключены"
+    dm_state = "✅ включены" if member.notify_assignment else "🔕 выключены"
+    game_state = "✅ включены" if member.notify_gamification else "🔕 выключены"
     return (
         "⚙️ <b>Настройки уведомлений</b>\n"
         f"{tx.DIVIDER}\n"
-        "🎮 Уведомления о геймификации: <b>" + state + "</b>\n"
-        "Сюда входят начисление XP, повышение уровня и новые ачивки. "
-        "По умолчанию они выключены, чтобы не спамить личку."
+        "📨 Задачи в личку: <b>" + dm_state + "</b>\n"
+        "Когда вам подтвердили или изменили задачу в чате — пришлю её карточку в "
+        "личку. По умолчанию включено. Выключить можно и командой /dm_notify off.\n\n"
+        "🎮 Геймификация: <b>" + game_state + "</b>\n"
+        "Начисление XP, повышение уровня и новые ачивки. По умолчанию выключено, "
+        "чтобы не спамить личку."
     )
 
 
@@ -86,6 +92,14 @@ async def on_settings(cb: CallbackQuery, callback_data: SettingsCD, c: AppContai
         member.notify_gamification = False
         c.persist()
         await cb.answer("Уведомления выключены")
+    elif callback_data.action == "assignment_on":
+        member.notify_assignment = True
+        c.persist()
+        await cb.answer("Задачи в личку включены")
+    elif callback_data.action == "assignment_off":
+        member.notify_assignment = False
+        c.persist()
+        await cb.answer("Задачи в личку выключены")
     else:
         await cb.answer()
         return

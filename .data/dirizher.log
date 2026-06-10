@@ -2703,3 +2703,33 @@ httpx.ConnectError
 09:31:56 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
 09:31:56 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
 09:31:56 │ INFO    │ dirizher.main          │ Остановлено пользователем.
+11:04:07 │ INFO    │ dirizher.main          │ Дирижёр стартует · telegram=live llm=groq yougile=live audio=live
+11:04:12 │ INFO    │ dirizher.memory        │ Память дедупликации: backend=chroma, threshold=0.83
+11:04:12 │ INFO    │ dirizher.llm           │ LLM-провайдер: Groq (llama-3.3-70b-versatile), ключей: 4
+11:04:13 │ INFO    │ dirizher.llm.groq      │ Groq: ключей в ротации — 4
+11:04:13 │ INFO    │ dirizher.yougile       │ Канбан-доска: YouGile API
+11:04:14 │ INFO    │ dirizher.audio.embeddings │ Голосовые эмбеддинги: pyannote (pyannote/wespeaker-voxceleb-resnet34-LM)
+11:04:14 │ INFO    │ dirizher.audio         │ Распознавание речи: noisereduce → pyannote → faster-whisper (local)
+11:04:14 │ INFO    │ dirizher.state         │ Состояние загружено: участников 2, задач 3, команд 1
+11:04:15 │ INFO    │ dirizher.container     │ Контейнер собран · режимы: telegram=live llm=groq yougile=live audio=live
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Adding job tentatively -- it will be properly scheduled when the scheduler starts
+11:04:15 │ INFO    │ dirizher.scheduler     │ Планировщик: утро [0 9 * * *], напоминания [0 10 * * *], вечер [0 20 * * *], лидерборд [0 18 * * 5]
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Added job "run_morning_digest" to job store "default"
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Added job "run_reminders" to job store "default"
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Added job "run_evening_reconciliation" to job store "default"
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Added job "run_trash_purge" to job store "default"
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Added job "run_leaderboard_post" to job store "default"
+11:04:15 │ INFO    │ apscheduler.scheduler  │ Scheduler started
+11:04:16 │ INFO    │ dirizher.main          │ Бот @degree_case_bot запущен (polling) · API на 0.0.0.0:8080
+11:04:16 │ INFO    │ aiogram.dispatcher     │ Start polling
+11:04:16 │ INFO    │ aiogram.dispatcher     │ Run polling for bot @degree_case_bot id=8528749837 - 'Дирижер'
+11:19:15 │ INFO    │ apscheduler.executors.default │ Running job "run_trash_purge (trigger: interval[0:15:00], next run at: 2026-06-10 08:34:15 MSK)" (scheduled at 2026-06-10 08:19:15.426786+03:00)
+11:19:15 │ INFO    │ apscheduler.executors.default │ Job "run_trash_purge (trigger: interval[0:15:00], next run at: 2026-06-10 08:34:15 MSK)" executed successfully
+11:22:05 │ INFO    │ aiogram.dispatcher     │ Polling stopped
+11:22:05 │ INFO    │ apscheduler.scheduler  │ Scheduler has been shut down
+11:22:05 │ INFO    │ aiogram.dispatcher     │ Polling stopped for bot @degree_case_bot id=8528749837 - 'Дирижер'
+11:22:05 │ INFO    │ dirizher.main          │ Остановлено пользователем.

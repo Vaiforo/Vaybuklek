@@ -132,11 +132,16 @@ def board_task_keyboard(
 
 def settings_keyboard(member: TeamMember) -> InlineKeyboardMarkup:
     """Клавиатура личных настроек уведомлений."""
-    enabled = bool(member.notify_gamification)
+    game_on = bool(member.notify_gamification)
+    dm_on = bool(member.notify_assignment)
     kb = InlineKeyboardBuilder()
     kb.button(
-        text=("✅ Геймификация включена" if enabled else "🔕 Геймификация выключена"),
-        callback_data=SettingsCD(action="gamification_off" if enabled else "gamification_on"),
+        text=("✅ Задачи в личку включены" if dm_on else "🔕 Задачи в личку выключены"),
+        callback_data=SettingsCD(action="assignment_off" if dm_on else "assignment_on"),
+    )
+    kb.button(
+        text=("✅ Геймификация включена" if game_on else "🔕 Геймификация выключена"),
+        callback_data=SettingsCD(action="gamification_off" if game_on else "gamification_on"),
     )
     kb.button(text="✖️ Закрыть", callback_data=SettingsCD(action="close"))
     kb.adjust(1)

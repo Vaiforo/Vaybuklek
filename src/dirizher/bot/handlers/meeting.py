@@ -213,9 +213,8 @@ async def on_telemost_link(message: Message, c: AppContainer) -> None:
         # (GET /meeting/command) и САМО начнёт запись активной вкладки созвона.
         c.extension_signal.want_record(chat_id)
         await message.answer(
-            "🧩 Источник звука — <b>браузерное расширение</b>. Дал ему сигнал начать запись.\n"
-            "Откройте вкладку созвона в браузере с расширением — запись стартует сама "
-            "(в течение пары секунд). Остановит её тишина (~3 мин) или /meeting_stop."
+            "🧩 Источник звука — <b>браузерное расширение</b>. Дал ему сигнал начать "
+            "запись. Остановит её тишина (~3 мин) или /meeting_stop."
         )
         return
     if chat_id in c.active_meetings:

@@ -34,7 +34,8 @@ HELP = f"""\
 Просто пишите задачи в чат — я сам разберу их на карточки.
 А этими командами можно управлять вручную.
 
-• /settings — настройки уведомлений
+• /settings — настройки уведомлений (задачи в личку, геймификация)
+• /dm_notify <code>on|off</code> — личные уведомления о задачах в ЛС
 
 📋 <b>Задачи и доска</b>
 • /board — канбан-доска целиком
@@ -60,17 +61,33 @@ HELP = f"""\
 """
 
 HELP_MEETINGS = f"""\
-🎙️ <b>Встречи и голос</b>
+🎙️ <b>Встречи: запись и распознавание</b>
 {DIVIDER}
-• /meeting_source <code>[telemost|loopback|extension]</code> — источник звука встреч
-• /meeting_capture — захват созвона из браузера (конфиг расширения)
-• /meeting_stop — остановить запись встречи
-• /enroll_voice — запомнить мой голос, чтобы подписывать реплики
-• /who <code>Speaker_1 Имя</code> — подписать голос из последней записи
+Кидаете в чат ссылку <code>telemost.yandex.ru/…</code> — я записываю созвон,
+делаю саммари и выношу задачи на доску. Запись сама стопится по тишине (~3 мин)
+или командой /meeting_stop.
 
-💡 Кинул ссылку Телемоста в чат — я подключаюсь и пишу звонок сам.
-В режиме <code>loopback</code> пишу системный звук машины, что уже в звонке.
-В режиме <code>extension</code> звук шлёт браузерное расширение (см. /meeting_capture).
+<b>Команды</b>
+• /meeting_source — показать/сменить источник звука
+• /meeting_source <code>telemost|loopback|extension</code> — выбрать источник
+• /meeting_capture — настроить запись из браузерного расширения
+• /meeting_stop — остановить текущую запись
+
+<b>Три источника звука</b>
+🌐 <code>telemost</code> — бот сам заходит в звонок по ссылке (браузер Playwright).
+🎧 <code>loopback</code> — пишу системный звук машины, что уже в звонке.
+🧩 <code>extension</code> — звук шлёт браузерное расширение (захват вкладки созвона).
+
+<b>Запись из браузера (расширение)</b>
+1. /meeting_capture — пришлю конфиг (адрес, chat_id, токен) и включу режим.
+2. Поставьте расширение из папки <code>extension/</code>
+   (<code>chrome://extensions</code> → Загрузить распакованное), вставьте конфиг.
+3. Включите в настройках «Записывать и мой микрофон», если ваш голос тоже нужен.
+4. Кидаете ссылку Телемоста — расширение запишет вкладку само.
+
+<b>Голос участников</b>
+• /enroll_voice — запомнить мой голос, чтобы подписывать реплики на встречах
+• /who <code>Speaker_1 Имя</code> — подписать голос спикера из последней записи
 """
 
 HELP_PROFILE = f"""\
@@ -90,6 +107,10 @@ HELP_PROFILE = f"""\
 <b>Кто я</b>
 • /register <code>Имя; алиас1, алиас2</code> — представиться
 • /alias <code>энди, стеф</code> — задать прозвища
+
+<b>Уведомления</b>
+• /settings — личные настройки уведомлений
+• /dm_notify <code>on|off</code> — присылать в ЛС подтверждённые/изменённые задачи
 """
 
 HELP_KB = f"""\
@@ -303,13 +324,17 @@ async def cmd_help(message: Message, c: AppContainer) -> None:
 
 
 def _render_settings(member: TeamMember) -> str:
-    state = "✅ включены" if member.notify_gamification else "🔕 выключены"
+    dm_state = "✅ включены" if member.notify_assignment else "🔕 выключены"
+    game_state = "✅ включены" if member.notify_gamification else "🔕 выключены"
     return (
         "⚙️ <b>Настройки уведомлений</b>\n"
         f"{DIVIDER}\n"
-        "🎮 Уведомления о геймификации: <b>" + state + "</b>\n"
-        "Сюда входят начисление XP, повышение уровня и новые ачивки. "
-        "По умолчанию они выключены, чтобы не спамить личку."
+        "📨 Задачи в личку: <b>" + dm_state + "</b>\n"
+        "Когда вам подтвердили или изменили задачу в чате — пришлю её карточку в "
+        "личку. По умолчанию включено. Быстрый тумблер: /dm_notify on|off.\n\n"
+        "🎮 Геймификация: <b>" + game_state + "</b>\n"
+        "Начисление XP, повышение уровня и новые ачивки. По умолчанию выключено, "
+        "чтобы не спамить личку."
     )
 
 
@@ -318,6 +343,34 @@ async def cmd_settings(message: Message, c: AppContainer) -> None:
     member = _member_from_message(message, c)
     c.persist()
     await message.answer(_render_settings(member), reply_markup=kb.settings_keyboard(member))
+
+
+@router.message(Command("dm_notify", "notify_dm"))
+async def cmd_dm_notify(message: Message, command: CommandObject, c: AppContainer) -> None:
+    """`/dm_notify [on|off]` — включить/выключить личные уведомления о задачах.
+
+    Без аргумента — показать текущее состояние и подсказку. Настройка личная
+    (на участника): выключивший не получает карточки подтверждённых/изменённых
+    задач в ЛС, но в общем чате задачи показываются как обычно.
+    """
+    member = _member_from_message(message, c)
+    arg = (command.args or "").strip().lower()
+    on = {"on", "вкл", "включить", "да", "1", "true"}
+    off = {"off", "выкл", "выключить", "нет", "0", "false"}
+    if arg in on:
+        member.notify_assignment = True
+        c.persist()
+        await message.answer("📨 Личные уведомления о задачах: <b>включены</b>.")
+    elif arg in off:
+        member.notify_assignment = False
+        c.persist()
+        await message.answer("🔕 Личные уведомления о задачах: <b>выключены</b>. Задачи в чате остаются.")
+    else:
+        now = "включены ✅" if member.notify_assignment else "выключены 🔕"
+        await message.answer(
+            f"📨 Личные уведомления о задачах сейчас <b>{now}</b>.\n"
+            "Переключить: <code>/dm_notify on</code> или <code>/dm_notify off</code>."
+        )
 
 
 @router.message(Command("help_meetings"))
@@ -784,6 +837,10 @@ async def cmd_task_edit(message: Message, command: CommandObject, c: AppContaine
     await c.service.apply_correction(task, correction)
     await c.service.edit_task(task)
     await message.answer("✏️ <b>Задача обновлена</b>\n" + tx.render_task_card(task))
+    # Уведомляем исполнителей об изменении в личку (если не выключено /dm_notify).
+    from ..flow import notify_assignee_edited
+
+    await notify_assignee_edited(message.bot, c, task, message.chat.id)
 
 
 @router.message(Command("task_del", "delete_task"))

@@ -60,18 +60,64 @@ async def notify_workload(bot: Bot, c: AppContainer, assignee: str | None, chat_
     await send_with_fallback(bot, target, warning, fallback_chat_id=chat_id)
 
 
+async def _dm_assignees(
+    bot: Bot,
+    c: AppContainer,
+    task,
+    chat_id: int,
+    *,
+    intro: str,
+    header: str,
+) -> None:
+    """Разослать карточку задачи в личку КАЖДОМУ исполнителю.
+
+    Уважает личную настройку `notify_assignment` (её можно выключить командой
+    /dm_notify или в /settings). В сам общий чат не дублируем (без fallback) —
+    задача там уже показана; шлём только тем, у кого открыта личка с ботом и кто
+    подтверждал НЕ в этой же личке.
+    """
+    from ..services.task_service import _split_assignees
+
+    sent_to: set[int] = set()
+    for name in _split_assignees(task.assignee):
+        member = c.team.resolve(name)
+        if not member or not member.dm_chat_id:
+            continue
+        if not member.notify_assignment:
+            continue
+        if member.dm_chat_id == chat_id:
+            continue  # подтверждение шло в личке этого же человека — не дублируем
+        if member.dm_chat_id in sent_to:
+            continue
+        sent_to.add(member.dm_chat_id)
+        await send_with_fallback(
+            bot,
+            member.dm_chat_id,
+            intro + "\n\n" + tx.render_task_card(task, header=header),
+        )
+
+
 async def notify_assignee(bot: Bot, c: AppContainer, created, chat_id: int) -> None:
-    """Отправить персональное уведомление исполнителю, если доступен личный чат."""
-    member = c.team.resolve(created.assignee)
-    if not member or not member.dm_chat_id or member.dm_chat_id == chat_id:
-        return
-    await send_with_fallback(
+    """Личное уведомление исполнителям о НОВОЙ (подтверждённой) задаче."""
+    await _dm_assignees(
         bot,
-        member.dm_chat_id,
-        "🎯 <b>Вам назначена задача</b>\n\n"
-        + tx.render_task_card(created, header="📌 Назначение")
-        + "\n\n🎮 XP начислю, когда задача перейдёт в «Готово».",
-        fallback_chat_id=chat_id,
+        c,
+        created,
+        chat_id,
+        intro="🎯 <b>Вам назначена задача</b>\n🎮 XP начислю, когда задача перейдёт в «Готово».",
+        header="📌 Назначение",
+    )
+
+
+async def notify_assignee_edited(bot: Bot, c: AppContainer, task, chat_id: int) -> None:
+    """Личное уведомление исполнителям об ИЗМЕНЕНИИ уже заведённой задачи."""
+    await _dm_assignees(
+        bot,
+        c,
+        task,
+        chat_id,
+        intro="✏️ <b>Задачу изменили</b>",
+        header="🔄 Обновлённая задача",
     )
 
 

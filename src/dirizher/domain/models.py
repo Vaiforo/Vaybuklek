@@ -63,6 +63,7 @@ class TeamMember(BaseModel):
     is_superuser: bool = False
     is_no_team_manager: bool = False  # руководитель слоя «нет команды» в беседе
     notify_gamification: bool = False  # личные уведомления об XP, уровнях и ачивках
+    notify_assignment: bool = True     # личные уведомления о назначенных/изменённых задачах
     leader_team_ids: list[str] = Field(default_factory=list)
     member_team_ids: list[str] = Field(default_factory=list)
 
