@@ -49,6 +49,32 @@ async def test_deadline_parsing(ctx, phrase, expected):
     assert tasks and tasks[0].deadline == expected
 
 
+# Среда 10.06.2026 — как в реальном кейсе. «Конец недели» = воскресенье ТЕКУЩЕЙ
+# недели (14.06), НЕ «через неделю» (17.06). Пятница (12.06) — только «рабочая».
+_WED = date(2026, 6, 10)
+
+
+@pytest.mark.parametrize(
+    "phrase,expected",
+    [
+        ("до конца этой недели", date(2026, 6, 14)),  # воскресенье текущей недели
+        ("к концу недели", date(2026, 6, 14)),
+        ("до конца недели", date(2026, 6, 14)),
+        ("на этой неделе", date(2026, 6, 14)),
+        ("к выходным", date(2026, 6, 14)),
+        ("к концу рабочей недели", date(2026, 6, 12)),  # пятница — только «рабочая»
+    ],
+)
+async def test_end_of_week_parsing(phrase, expected):
+    prov = MockLLMProvider()
+    ctx = ExtractionContext(today=_WED)
+    tasks = await prov.extract_tasks(f"Валера, сделай отчёт {phrase}", ctx)
+    assert tasks and tasks[0].deadline == expected
+    # фраза срока не должна осесть в заголовке задачи
+    assert "недел" not in tasks[0].task.lower()
+    assert "выходн" not in tasks[0].task.lower()
+
+
 async def test_non_task_ignored(ctx):
     prov = MockLLMProvider()
     tasks = await prov.extract_tasks("всем привет, как дела?", ctx)

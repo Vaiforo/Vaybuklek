@@ -51,6 +51,19 @@
     <label for="token">Токен (X-Dirizher-Token)</label>
     <input id="token" placeholder="значение DIRIZHER_API__SHARED_SECRET" />
 
+    <label style="display:flex; align-items:center; gap:8px; margin-top:18px; font-weight:600;">
+      <input type="checkbox" id="captureMic" style="width:auto; margin:0;" />
+      Записывать и мой микрофон
+    </label>
+    <div class="hint">
+      Звук вкладки — это голоса других участников. Включите, чтобы в записи был и
+      ваш голос (того, у кого расширение). Требуется разрешение на микрофон ↓.
+    </div>
+    <div class="row">
+      <button id="mic">🎤 Разрешить микрофон</button>
+    </div>
+    <div id="micMsg" class="hint"></div>
+
     <div class="row">
       <button id="save">Сохранить</button>
       <button id="ping">Проверить связь</button>

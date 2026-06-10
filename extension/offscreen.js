@@ -14,7 +14,8 @@ const POLL_MS = 4000; // как часто опрашиваем бота (авт
 
 let mediaRecorder = null;
 let chunks = [];
-let stream = null;
+let stream = null;       // поток вкладки (tabCapture)
+let micStream = null;    // поток микрофона (если включён captureMic)
 let audioCtx = null;
 let analyser = null;
 let startedAt = 0;
@@ -40,23 +41,49 @@ async function start(streamId, cfg) {
     video: false,
   });
 
-  // Возвращаем звук вкладки в колонки (tabCapture его «перехватывает»).
   audioCtx = new AudioContext();
   // Без жеста пользователя контекст может стартовать «suspended» → не будет ни
   // воспроизведения в колонки, ни данных в анализаторе. Будим его явно.
   try { await audioCtx.resume(); } catch {}
-  const src = audioCtx.createMediaStreamSource(stream);
-  src.connect(audioCtx.destination);
+
+  const tabSource = audioCtx.createMediaStreamSource(stream);
+  // Возвращаем звук вкладки в колонки (tabCapture его «перехватывает»).
+  tabSource.connect(audioCtx.destination);
 
   // Анализатор громкости для авто-стопа по тишине.
   analyser = audioCtx.createAnalyser();
   analyser.fftSize = 2048;
-  src.connect(analyser);
+  tabSource.connect(analyser);
+
+  // По умолчанию пишем только звук вкладки (голоса других участников). Если
+  // включён микрофон — подмешиваем его, чтобы в записи был и голос того, у кого
+  // расширение (его реплики в звонок уходят, но в самой вкладке не звучат).
+  let recordStream = stream;
+  if (config.captureMic) {
+    try {
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+        video: false,
+      });
+      const mixDest = audioCtx.createMediaStreamDestination();
+      tabSource.connect(mixDest);
+      const micSource = audioCtx.createMediaStreamSource(micStream);
+      micSource.connect(mixDest);     // микрофон → в запись
+      micSource.connect(analyser);    // и в детектор тишины
+      // ВАЖНО: микрофон НЕ подключаем к audioCtx.destination — иначе эхо в колонки.
+      recordStream = mixDest.stream;
+    } catch (e) {
+      // Нет доступа к микрофону — пишем только вкладку, не падаем.
+      micStream = null;
+      console.warn("Микрофон недоступен, пишу только звук вкладки:", e && e.message);
+    }
+  }
+
   silenceStreakMs = 0;
   lastTick = Date.now();
 
   chunks = [];
-  mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" });
+  mediaRecorder = new MediaRecorder(recordStream, { mimeType: "audio/webm;codecs=opus" });
   mediaRecorder.ondataavailable = (e) => {
     if (e.data && e.data.size > 0) chunks.push(e.data);
   };
@@ -75,9 +102,11 @@ async function stop(reason) {
   });
 
   try { stream.getTracks().forEach((t) => t.stop()); } catch {}
+  try { if (micStream) micStream.getTracks().forEach((t) => t.stop()); } catch {}
   try { if (audioCtx) await audioCtx.close(); } catch {}
   mediaRecorder = null;
   stream = null;
+  micStream = null;
   audioCtx = null;
   analyser = null;
 

@@ -4,31 +4,56 @@
 const apiBaseEl = document.getElementById("apiBase");
 const chatIdEl = document.getElementById("chatId");
 const tokenEl = document.getElementById("token");
+const captureMicEl = document.getElementById("captureMic");
 const msgEl = document.getElementById("msg");
+const micMsgEl = document.getElementById("micMsg");
 
 function show(text, ok) {
   msgEl.textContent = text;
   msgEl.style.color = ok ? "#16a34a" : "#dc2626";
 }
 
+function showMic(text, ok) {
+  micMsgEl.textContent = text;
+  micMsgEl.style.color = ok ? "#16a34a" : "#dc2626";
+}
+
 // Загрузить сохранённые значения.
-chrome.storage.sync.get(["apiBase", "chatId", "token"], (cfg) => {
+chrome.storage.sync.get(["apiBase", "chatId", "token", "captureMic"], (cfg) => {
   apiBaseEl.value = cfg.apiBase || "";
   chatIdEl.value = cfg.chatId != null ? cfg.chatId : "";
   tokenEl.value = cfg.token || "";
+  captureMicEl.checked = !!cfg.captureMic;
 });
 
 document.getElementById("save").addEventListener("click", () => {
   const apiBase = apiBaseEl.value.trim().replace(/\/+$/, "");
   const chatId = chatIdEl.value.trim();
   const token = tokenEl.value.trim();
+  const captureMic = captureMicEl.checked;
   if (!apiBase || !chatId) {
     show("Заполните API base и chat_id.", false);
     return;
   }
-  chrome.storage.sync.set({ apiBase, chatId, token }, () => {
+  chrome.storage.sync.set({ apiBase, chatId, token, captureMic }, () => {
     show("✅ Сохранено.", true);
   });
+});
+
+// Запросить разрешение на микрофон. Промпт можно показать только из видимой
+// страницы (options), offscreen-документ — невидимый. Грант сохраняется для
+// origin расширения, дальше offscreen использует микрофон без повторных запросов.
+document.getElementById("mic").addEventListener("click", async () => {
+  showMic("Запрашиваю доступ к микрофону…", true);
+  try {
+    const s = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    s.getTracks().forEach((t) => t.stop()); // нам нужен только грант
+    captureMicEl.checked = true;
+    showMic("✅ Доступ к микрофону разрешён. Не забудьте «Сохранить».", true);
+  } catch (e) {
+    captureMicEl.checked = false;
+    showMic("❌ Доступ к микрофону не выдан: " + (e && e.message ? e.message : e), false);
+  }
 });
 
 document.getElementById("ping").addEventListener("click", async () => {

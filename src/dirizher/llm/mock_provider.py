@@ -47,6 +47,20 @@ def _next_weekday(today: date, target: int) -> date:
     return today + timedelta(days=delta)
 
 
+def _end_of_week(today: date, *, sunday: bool = False) -> date:
+    """Конец ТЕКУЩЕЙ недели: пятница (рабочая) или воскресенье (календарная).
+
+    Если сегодня уже пятница/воскресенье — это сегодня (delta 0), а не следующая.
+    """
+    target = 6 if sunday else 4
+    return today + timedelta(days=(target - today.weekday()) % 7)
+
+
+# «конец/конца/конце/концу [этой/текущей/рабочей] недели» — ловит и
+# «до конца этой недели», и «к концу рабочей недели».
+_END_OF_WEEK_RE = re.compile(r"кон(?:ец|ца|це|цу)\s+(?:эт\w+\s+|текущ\w+\s+|рабоч\w+\s+)?недел")
+
+
 def _parse_deadline(text: str, today: date) -> date | None:
     low = text.lower()
     if "послезавтра" in low:
@@ -55,8 +69,12 @@ def _parse_deadline(text: str, today: date) -> date | None:
         return today + timedelta(days=1)
     if "сегодня" in low:
         return today
-    if "конца недели" in low or "конец недели" in low:
-        return _next_weekday(today, 4)  # пятница
+    if re.search(r"(?:к|до|на)\s+выходн", low):
+        return _end_of_week(today, sunday=True)  # «к выходным» — воскресенье
+    if _END_OF_WEEK_RE.search(low) or "на этой недел" in low:
+        # «конец недели» = воскресенье; пятница — только если явно «рабочая».
+        work_week = "рабоч" in low
+        return _end_of_week(today, sunday=not work_week)
     # явная дата DD.MM(.YYYY)
     m = re.search(r"\b(\d{1,2})[.\-/](\d{1,2})(?:[.\-/](\d{2,4}))?\b", low)
     if m:
@@ -146,7 +164,9 @@ def _clean_title(text: str, deadline_present: bool) -> str:
     t = re.sub(r"\s{2,}", " ", t).strip(" \t\n.,—-")
     # 2) срезать срок (в начале или в конце) для чистоты заголовка
     deadline_phrase = (
-        r"(к|до|в|на)\s+(завтра|послезавтра|сегодня|конца недели|"
+        r"(к|до|в|на)\s+(завтра|послезавтра|сегодня|"
+        r"кон(?:ец|ца|це|цу)\s+(?:эт\w+\s+|текущ\w+\s+|рабоч\w+\s+)?недел\w*|"
+        r"эт\w+\s+недел\w*|выходным|"
         r"понедельник\w*|вторник\w*|сред\w+|четверг\w*|пятниц\w+|суббот\w+|"
         r"воскресень\w*|\d{1,2}[.\-/]\d{1,2}(?:[.\-/]\d{2,4})?)"
     )

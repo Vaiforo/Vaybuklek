@@ -162,3 +162,22 @@ async def test_groq_transcribe_rotates_on_rate_limit(tmp_path):
     # первый ключ дал 429, второй сработал
     assert exhausted.audio.transcriptions.calls == 1
     assert ok.audio.transcriptions.calls == 1
+
+
+async def test_groq_transcribe_rotates_on_permission_denied(tmp_path):
+    """403 (невалидный ключ/нет доступа) — тоже переключаемся на следующий ключ."""
+    from dirizher.audio.groq_transcriber import PermissionDeniedError
+
+    err = PermissionDeniedError(
+        "forbidden",
+        response=httpx.Response(403, request=httpx.Request("POST", "https://api.groq.com")),
+        body=None,
+    )
+    t = GroqWhisperTranscriber(["k1", "k2"], "m")
+    denied = _FakeClient(exc=err)
+    ok = _FakeClient(text="готово")
+    t._clients = [denied, ok]
+    res = await t.transcribe(_make(tmp_path))
+    assert res.text == "готово"
+    assert denied.audio.transcriptions.calls == 1
+    assert ok.audio.transcriptions.calls == 1

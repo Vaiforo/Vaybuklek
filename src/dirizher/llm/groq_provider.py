@@ -1,9 +1,11 @@
 """Боевой провайдер Groq (Llama 3.3 70B) с ротацией нескольких ключей.
 
-Дневной лимит токенов (TPD) у Groq на ключ. Если ключ исчерпан (429), провайдер
-прозрачно переключается на следующий ключ и запоминает рабочий индекс, чтобы не
-тратить вызовы на заведомо исчерпанный ключ. Когда исчерпаны ВСЕ ключи —
-поднимаем исключение (TaskService откатится на эвристику).
+Дневной лимит токенов (TPD) у Groq на ключ. Если ключ исчерпан (429) ИЛИ ключ
+отклонён/нет доступа (403, PermissionDeniedError — невалидный/просроченный ключ,
+нет доступа к модели), провайдер прозрачно переключается на следующий ключ и
+запоминает рабочий индекс, чтобы не тратить вызовы на заведомо нерабочий ключ.
+Когда исчерпаны/отклонены ВСЕ ключи — поднимаем исключение (TaskService
+откатится на эвристику).
 """
 
 from __future__ import annotations
@@ -36,7 +38,7 @@ class GroqLLMProvider:
     async def extract_tasks(
         self, message: str, context: ExtractionContext
     ) -> list[ExtractedTask]:
-        from groq import RateLimitError
+        from groq import PermissionDeniedError, RateLimitError
 
         messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
@@ -53,18 +55,23 @@ class GroqLLMProvider:
                     messages=messages,
                 )
                 return parse_tasks(resp.choices[0].message.content or "")
-            except RateLimitError as e:
+            except (RateLimitError, PermissionDeniedError) as e:
                 last_err = e
-                n = len(self._clients)
-                log.warning("Groq ключ #%d/%d исчерпан (429) — переключаюсь", self._idx + 1, n)
-                self._idx = (self._idx + 1) % n
+                self._rotate(e)
                 continue
-        # все ключи исчерпаны
+        # все ключи исчерпаны/отклонены
         raise last_err if last_err else RuntimeError("Groq: нет доступных ключей")
+
+    def _rotate(self, err: Exception) -> None:
+        """Переключиться на следующий ключ, залогировав причину (429/403)."""
+        n = len(self._clients)
+        reason = "403 (нет доступа/ключ отклонён)" if type(err).__name__ == "PermissionDeniedError" else "429 (исчерпан)"
+        log.warning("Groq ключ #%d/%d — %s — переключаюсь", self._idx + 1, n, reason)
+        self._idx = (self._idx + 1) % n
 
     async def summarize_meeting(self, transcript_text: str) -> str:
         """Краткое деловое саммари встречи по размеченному транскрипту."""
-        from groq import RateLimitError
+        from groq import PermissionDeniedError, RateLimitError
 
         messages = [
             {"role": "system", "content": MEETING_SUMMARY_SYSTEM},
@@ -80,10 +87,8 @@ class GroqLLMProvider:
                     messages=messages,
                 )
                 return (resp.choices[0].message.content or "").strip()
-            except RateLimitError as e:
+            except (RateLimitError, PermissionDeniedError) as e:
                 last_err = e
-                n = len(self._clients)
-                log.warning("Groq ключ #%d/%d исчерпан (429) — переключаюсь", self._idx + 1, n)
-                self._idx = (self._idx + 1) % n
+                self._rotate(e)
                 continue
         raise last_err if last_err else RuntimeError("Groq: нет доступных ключей")

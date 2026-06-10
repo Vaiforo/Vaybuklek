@@ -1,18 +1,33 @@
 {
   "team": [
     {
+      "user_id": 1929104164,
+      "username": "vaiforic",
+      "full_name": "vaiforic",
+      "aliases": [
+        "Валера",
+        "Вайфорик"
+      ],
+      "email": "andreycly5@gmail.com",
+      "yougile_id": "196b2407-150a-4ea2-a0d1-f0001bc32de9",
+      "voice_registered": false,
+      "dm_chat_id": 1929104164,
+      "is_superuser": true,
+      "is_no_team_manager": false,
+      "notify_gamification": false,
+      "leader_team_ids": [],
+      "member_team_ids": [
+        "32cb108e3a91"
+      ]
+    },
+    {
       "user_id": 951099892,
       "username": "Stefan_Richards",
       "full_name": "Энди",
       "aliases": [
-        "энди",
-        "стеф",
-        "андрей",
-        "Андрею",
         "Энди",
         "Андрей",
-        "Андрей Скрипа",
-        "Стеф"
+        "Андрей Скрипа"
       ],
       "email": "stefan.richard.sk@gmail.com",
       "yougile_id": "7bec5edc-2c38-4319-b124-0b1445032fab",
@@ -22,102 +37,51 @@
       "is_no_team_manager": false,
       "notify_gamification": false,
       "leader_team_ids": [
-        "8903eef2c54c"
+        "32cb108e3a91"
       ],
       "member_team_ids": [
-        "8903eef2c54c"
+        "32cb108e3a91"
       ]
-    },
-    {
-      "user_id": 1031812960,
-      "username": "danya_skiba",
-      "full_name": "Даня",
-      "aliases": [
-        "superuser"
-      ],
-      "email": "skiba_danila.omstu@mail.ru",
-      "yougile_id": "e69571c0-68c4-4268-81a1-1a797d904d33",
-      "voice_registered": false,
-      "dm_chat_id": 1031812960,
-      "is_superuser": false,
-      "is_no_team_manager": false,
-      "notify_gamification": false,
-      "leader_team_ids": [],
-      "member_team_ids": [
-        "8903eef2c54c"
-      ]
-    },
-    {
-      "user_id": 1929104164,
-      "username": "vaiforic",
-      "full_name": "vaiforic",
-      "aliases": [
-        "Валера"
-      ],
-      "email": "andreycly5@gmail.com",
-      "yougile_id": "196b2407-150a-4ea2-a0d1-f0001bc32de9",
-      "voice_registered": false,
-      "dm_chat_id": 1929104164,
-      "is_superuser": true,
-      "is_no_team_manager": true,
-      "notify_gamification": false,
-      "leader_team_ids": [],
-      "member_team_ids": []
-    },
-    {
-      "user_id": 5615189136,
-      "username": "rs6_owner",
-      "full_name": "Max",
-      "aliases": [],
-      "email": null,
-      "yougile_id": null,
-      "voice_registered": false,
-      "dm_chat_id": null,
-      "is_superuser": false,
-      "is_no_team_manager": false,
-      "notify_gamification": false,
-      "leader_team_ids": [],
-      "member_team_ids": []
     }
   ],
   "tasks": [
     {
-      "id": "18d6beb1927f",
-      "title": "Сделать сайт на ФастАПИ",
+      "id": "3ae086a43bf8",
+      "title": "Энди сделай квартальный отчёт",
       "requirements": null,
-      "assignee": "vaiforic",
+      "assignee": "Stefan_Richards",
       "assignee_yougile_ids": [
-        "196b2407-150a-4ea2-a0d1-f0001bc32de9"
+        "7bec5edc-2c38-4319-b124-0b1445032fab"
       ],
-      "deadline": null,
+      "deadline": "2026-06-11",
       "deadline_time": null,
       "priority": "medium",
-      "status": "done",
+      "status": "todo",
       "team_id": null,
-      "created_by_user_id": null,
-      "confidence": 0.75,
+      "created_by_user_id": 1929104164,
+      "confidence": 0.95,
       "sources": [
         {
           "source": "chat",
           "chat_id": -1003779801476,
-          "message_id": 793,
-          "excerpt": "Задача валере Сделать сайт на ФастАПИ",
-          "captured_at": "2026-06-09T07:19:01.521904Z"
+          "message_id": 2035,
+          "excerpt": "Энди сделай квартальный отчёт до воскресенья",
+          "captured_at": "2026-06-09T19:24:06.544073Z"
         }
       ],
-      "board_card_id": "6face732-35b6-4de8-b3b4-101ff767dde9",
-      "created_at": "2026-06-09T07:19:02.307987Z",
-      "updated_at": "2026-06-09T08:38:45.043419Z",
-      "reminded_at": null,
+      "board_card_id": "7855e597-fd69-4313-9e41-0e6044c3407f",
+      "created_at": "2026-06-09T19:24:06.810857Z",
+      "updated_at": "2026-06-09T19:24:17.251191Z",
+      "reminded_at": "2026-06-09T19:25:25.725935Z",
       "started_at": null,
-      "completed_at": "2026-06-09T08:38:29.692324Z",
+      "completed_at": null,
       "trashed_at": null,
       "delete_after": null,
       "restore_status": null
     },
     {
-      "id": "89db1cf059e5",
-      "title": "сделать презентацию",
+      "id": "117ee67723bc",
+      "title": "Валера сделай небольшую страницу про нашего бота сегодня !",
       "requirements": null,
       "assignee": "vaiforic",
       "assignee_yougile_ids": [
@@ -127,24 +91,65 @@
       "deadline_time": null,
       "priority": "high",
       "status": "done",
-      "team_id": null,
+      "team_id": "32cb108e3a91",
       "created_by_user_id": 951099892,
-      "confidence": 0.9,
+      "confidence": 0.95,
       "sources": [
         {
           "source": "chat",
           "chat_id": -1003779801476,
-          "message_id": 995,
-          "excerpt": "Валера, сделай презу срочно на завтра",
-          "captured_at": "2026-06-09T10:15:06.027727Z"
+          "message_id": 2049,
+          "excerpt": "Валера сделай небольшую страницу про нашего бота сегодня срочно!",
+          "captured_at": "2026-06-09T19:24:45.075105Z"
+        },
+        {
+          "source": "chat",
+          "chat_id": -1003779801476,
+          "message_id": 2125,
+          "excerpt": "Валера сделай небольшую страницу про нашего бота сегодня срочно!",
+          "captured_at": "2026-06-09T19:38:04.327677Z"
         }
       ],
-      "board_card_id": "5a9aa0e5-9145-4a7b-9311-00fc8ec412a6",
-      "created_at": "2026-06-09T10:15:06.834413Z",
-      "updated_at": "2026-06-09T10:16:03.717818Z",
+      "board_card_id": "a8a0f780-0a17-4fe0-b210-7590f1dcb40e",
+      "created_at": "2026-06-09T19:24:45.346826Z",
+      "updated_at": "2026-06-09T19:38:15.054249Z",
+      "reminded_at": "2026-06-09T19:25:25.725935Z",
+      "started_at": "2026-06-09T19:25:10.417297Z",
+      "completed_at": "2026-06-09T19:25:14.454406Z",
+      "trashed_at": null,
+      "delete_after": null,
+      "restore_status": null
+    },
+    {
+      "id": "ff4d094cad12",
+      "title": "Speaker_1: Энди, сделай сайт на 10 пользователей до следующей недели",
+      "requirements": null,
+      "assignee": "Stefan_Richards",
+      "assignee_yougile_ids": [
+        "7bec5edc-2c38-4319-b124-0b1445032fab"
+      ],
+      "deadline": null,
+      "deadline_time": "10:00:00",
+      "priority": "medium",
+      "status": "todo",
+      "team_id": "32cb108e3a91",
+      "created_by_user_id": null,
+      "confidence": 0.85,
+      "sources": [
+        {
+          "source": "meeting",
+          "chat_id": -1003779801476,
+          "message_id": null,
+          "excerpt": "Speaker_1: Энди, сделай сайт на 10 пользователей до следующей недели. У меня все.\nSpeaker_2: Валера, пожалуйста, доделай презентацию до 14-го числа до 18.00.",
+          "captured_at": "2026-06-09T19:29:00.267274Z"
+        }
+      ],
+      "board_card_id": "ab5f3b20-82d8-4505-b30a-29703013e859",
+      "created_at": "2026-06-09T19:29:00.344587Z",
+      "updated_at": "2026-06-09T19:29:14.331710Z",
       "reminded_at": null,
       "started_at": null,
-      "completed_at": "2026-06-09T10:16:03.717802Z",
+      "completed_at": null,
       "trashed_at": null,
       "delete_after": null,
       "restore_status": null
@@ -152,14 +157,14 @@
   ],
   "teams": [
     {
-      "id": "8903eef2c54c",
-      "name": "Вайбкульбек",
+      "id": "32cb108e3a91",
+      "name": "Аналитика",
       "manager_user_ids": [
         951099892
       ],
       "member_user_ids": [
         951099892,
-        1031812960
+        1929104164
       ]
     }
   ]

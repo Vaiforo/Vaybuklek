@@ -21,7 +21,7 @@ async function ensureOffscreen() {
 }
 
 async function getConfig() {
-  return await chrome.storage.sync.get(["apiBase", "chatId", "token"]);
+  return await chrome.storage.sync.get(["apiBase", "chatId", "token", "captureMic"]);
 }
 
 // Получить streamId активной вкладки и запустить запись в offscreen.

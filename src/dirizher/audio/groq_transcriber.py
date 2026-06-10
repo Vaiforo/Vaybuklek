@@ -3,7 +3,8 @@
 Groq хостит Whisper (`whisper-large-v3-turbo`) — это быстрый облачный STT,
 который не требует ffmpeg/torch/faster-whisper на машине. Аудио из Telegram
 (.oga/.ogg/.mp4) Groq принимает как есть. Ключи переиспользуются те же, что и
-для LLM, с такой же ротацией при 429 (см. GroqLLMProvider).
+для LLM, с такой же ротацией при 429 (исчерпан) и 403 (ключ отклонён/нет доступа)
+— см. GroqLLMProvider.
 """
 
 from __future__ import annotations
@@ -27,6 +28,10 @@ class FallbackRateLimitError(Exception):
         self.body = body
 
 
+class FallbackPermissionDeniedError(FallbackRateLimitError):
+    """Fallback для 403 без пакета groq."""
+
+
 class FallbackAsyncGroq:
     def __init__(self, api_key: str) -> None:
         self.api_key = api_key
@@ -36,10 +41,14 @@ class FallbackAsyncGroq:
 HAS_GROQ = find_spec("groq") is not None
 
 if HAS_GROQ:
-    from groq import AsyncGroq, RateLimitError
+    from groq import AsyncGroq, PermissionDeniedError, RateLimitError
 else:
     AsyncGroq = FallbackAsyncGroq
     RateLimitError = FallbackRateLimitError
+    PermissionDeniedError = FallbackPermissionDeniedError
+
+# Ошибки ключа, при которых переключаемся на следующий: лимит (429) и отказ (403).
+_KEY_ERRORS = (RateLimitError, PermissionDeniedError)
 
 log = get_logger("dirizher.audio.groq")
 
@@ -74,10 +83,11 @@ class GroqWhisperTranscriber:
                 text = (getattr(resp, "text", None) or "").strip()
                 segments = _parse_segments(resp)
                 return TranscriptResult(text=text, segments=segments, is_mock=False)
-            except RateLimitError as e:
+            except _KEY_ERRORS as e:
                 last_err = e
                 n = len(self._clients)
-                log.warning("Groq Whisper ключ #%d/%d исчерпан (429) — переключаюсь", self._idx + 1, n)
+                reason = "403 (нет доступа/ключ отклонён)" if type(e).__name__ == "PermissionDeniedError" else "429 (исчерпан)"
+                log.warning("Groq Whisper ключ #%d/%d — %s — переключаюсь", self._idx + 1, n, reason)
                 self._idx = (self._idx + 1) % n
                 continue
         raise last_err if last_err else RuntimeError("Groq Whisper: нет доступных ключей")
